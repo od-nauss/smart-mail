@@ -1,0 +1,21 @@
+{
+  "name": "منصة المراسلات الذكية",
+  "short_name": "المراسلات الذكية",
+  "lang": "ar",
+  "dir": "rtl",
+  "display": "standalone",
+  "background_color": "#faf8f4",
+  "theme_color": "#016564",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
