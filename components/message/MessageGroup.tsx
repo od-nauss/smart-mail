@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import type { MessageGroupType } from '@/lib/types';
+import type { MessageGroupInfo } from '@/lib/types';
 
 interface Props {
-  group: MessageGroupType;
+  group: MessageGroupInfo;
   children: ReactNode;
   className?: string;
 }
