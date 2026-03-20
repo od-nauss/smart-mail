@@ -52,8 +52,7 @@ export default function DynamicTable({
   };
 
   const handleRemoveRow = (index: number) => {
-    const newData = value.filter((_, i) => i !== index);
-    onChange(newData);
+    onChange(value.filter((_, i) => i !== index));
   };
 
   const handleUpdateCell = (
@@ -71,8 +70,7 @@ export default function DynamicTable({
 
   const handleDuplicateLast = () => {
     if (value.length === 0) return;
-    const lastRow = { ...value[value.length - 1] };
-    onChange([...value, lastRow]);
+    onChange([...value, { ...value[value.length - 1] }]);
   };
 
   return (
@@ -122,7 +120,6 @@ export default function DynamicTable({
                             handleUpdateCell(rowIndex, col.key, e.target.value)
                           }
                           disabled={!editable}
-                          inputSize="sm"
                         />
                       ) : col.type === 'date' ? (
                         <input
