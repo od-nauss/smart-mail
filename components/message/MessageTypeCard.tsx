@@ -1,42 +1,35 @@
-import { MessageTemplate } from '@/lib/types';
+'use client';
 
-interface Props {
+import { MessageTemplate } from '@/lib/types';
+import { cn } from '@/lib/utils';
+
+interface MessageTypeCardProps {
   template: MessageTemplate;
   onClick: () => void;
   variant?: 'grid' | 'list';
+  className?: string;
 }
 
-export function MessageTypeCard({ template, onClick, variant = 'grid' }: Props) {
-  const fieldsCount = Array.isArray(template.fields) ? template.fields.length : 0;
-  const isList = variant === 'list';
-
+export function MessageTypeCard({
+  template,
+  onClick,
+  variant = 'grid',
+  className,
+}: MessageTypeCardProps) {
   return (
     <button
-      type="button"
       onClick={onClick}
-      className={`
-        w-full rounded-xl border border-[#ece4d7] bg-[#fcfbf8] text-right transition
-        hover:border-[#d0b284] hover:bg-white
-        ${isList ? 'px-4 py-4' : 'px-4 py-5'}
-      `}
+      className={cn(
+        'group text-right px-2.5 py-2 rounded-md',
+        'bg-naif-gray/30 hover:bg-naif-gold/20',
+        'transition-all duration-150',
+        'border border-transparent hover:border-naif-gold/30',
+        'focus:outline-none focus:ring-1 focus:ring-naif-primary/30',
+        'text-xs sm:text-sm text-gray-600 group-hover:text-naif-primary',
+        className
+      )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h4 className="text-lg font-medium leading-7 text-[#016564]">
-            {template.title}
-          </h4>
-
-          {template.description ? (
-            <p className="mt-1 text-sm leading-6 text-gray-600">
-              {template.description}
-            </p>
-          ) : null}
-        </div>
-
-        <span className="shrink-0 rounded-full bg-[#f3eee4] px-2.5 py-1 text-xs text-[#b89a5e]">
-          {fieldsCount} حقول
-        </span>
-      </div>
+      <span className="font-normal">{template.title}</span>
     </button>
   );
 }

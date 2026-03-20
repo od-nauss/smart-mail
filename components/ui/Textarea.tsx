@@ -1,43 +1,42 @@
 'use client';
 
-import { TextareaProps } from '@/lib/types';
+import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
+import { TextareaProps } from '@/lib/types';
 
-export function Textarea({
-  id,
-  label,
-  placeholder,
-  value,
-  onChange,
-  error,
-  required,
-  disabled,
-  rows = 5,
-  className,
-}: TextareaProps) {
-  return (
-    <div className={cn('space-y-1.5', className)}>
-      {label ? (
-        <label htmlFor={id} className="block text-sm font-semibold text-gray-700">
-          {label}
-          {required ? <span className="text-red-500 mr-1">*</span> : null}
-        </label>
-      ) : null}
-      <textarea
-        id={id}
-        value={value ?? ''}
-        placeholder={placeholder}
-        disabled={disabled}
-        rows={rows}
-        onChange={(e) => onChange?.(e.target.value)}
-        className={cn(
-          'input-field w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm resize-y',
-          'focus:outline-none focus:border-naif-gold',
-          error && 'border-red-400 focus:border-red-400',
-          className
+const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ id, label, placeholder, value, onChange, error, required, disabled, rows = 3, className }, ref) => {
+    return (
+      <div className={cn('space-y-1', className)}>
+        {label && (
+          <label htmlFor={id} className="block text-xs text-gray-600">
+            {label} {required && <span className="text-naif-maroon">*</span>}
+          </label>
         )}
-      />
-      {error ? <p className="text-xs text-red-500">{error}</p> : null}
-    </div>
-  );
-}
+        <textarea
+          ref={ref}
+          id={id}
+          name={id}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          disabled={disabled}
+          required={required}
+          rows={rows}
+          className={cn(
+            'w-full px-3 py-2 rounded-lg text-sm resize-none',
+            'border border-naif-gray bg-naif-white',
+            'text-gray-800 placeholder:text-naif-blueGray',
+            'focus:outline-none focus:border-naif-gold focus:ring-1 focus:ring-naif-gold/30',
+            'disabled:bg-naif-gray/30 disabled:cursor-not-allowed',
+            error && 'border-naif-maroon'
+          )}
+        />
+        {error && <p className="text-xs text-naif-maroon">{error}</p>}
+      </div>
+    );
+  }
+);
+
+Textarea.displayName = 'Textarea';
+export { Textarea };

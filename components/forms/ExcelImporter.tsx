@@ -1,42 +1,68 @@
 'use client';
 
-import { ChangeEvent } from 'react';
-import { parseExcelFile } from '@/lib/utils/excel';
-import { showToast } from '@/components/ui/Toast';
+import { useState, useRef, useCallback } from 'react';
+import { cn } from '@/lib/utils';
+import { Button } from '../ui/Button';
+import { readExcelFile, isValidExcelFile } from '@/lib/utils/excel';
+import { showToast } from '../ui/Toast';
 
-interface Props {
-  columns: string[];
-  onImport: (rows: Record<string, string>[]) => void;
+interface ExcelImporterProps {
+  onImport: (data: Record<string, string>[]) => void;
+  columns?: string[];
+  className?: string;
 }
 
-export function ExcelImporter({ columns, onImport }: Props) {
-  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+export function ExcelImporter({ onImport, columns = [], className }: ExcelImporterProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const result = await parseExcelFile(file);
-    if (!result.success) {
-      showToast(result.errors[0] || 'تعذر استيراد الملف', 'error');
+  const processFile = useCallback(async (file: File) => {
+    if (!isValidExcelFile(file)) {
+      showToast('ملف Excel غير صالح', 'error');
       return;
     }
 
-    const normalized = result.data.map((row) => {
-      const normalizedRow: Record<string, string> = {};
-      columns.forEach((column) => {
-        normalizedRow[column] = row[column] ?? '';
-      });
-      return normalizedRow;
-    });
+    setIsLoading(true);
+    try {
+      const result = await readExcelFile(file);
+      if (result.success && result.data.length > 0) {
+        onImport(result.data);
+        showToast(`تم استيراد ${result.rowCount} صف`, 'success');
+      } else {
+        showToast('الملف فارغ', 'warning');
+      }
+    } catch {
+      showToast('خطأ في قراءة الملف', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [onImport]);
 
-    onImport(normalized);
-    showToast(`تم استيراد ${normalized.length} صف`, 'success');
-    event.target.value = '';
-  };
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [processFile]);
 
   return (
-    <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-naif-primary px-3 py-2 text-sm font-semibold text-naif-primary hover:bg-naif-primary/5">
-      استيراد من Excel
-      <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileChange} />
-    </label>
+    <div className={cn('flex items-center gap-2', className)}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => fileInputRef.current?.click()}
+        isLoading={isLoading}
+        className="text-xs text-naif-blueGray"
+      >
+        استيراد من Excel
+      </Button>
+    </div>
   );
 }

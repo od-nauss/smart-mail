@@ -1,51 +1,100 @@
 'use client';
 
-import { useMemo } from 'react';
-import { Table } from '@/components/ui/Table';
-import { Button } from '@/components/ui/Button';
-import { ExcelImporter } from './ExcelImporter';
+import { useState, useCallback } from 'react';
+import { cn } from '@/lib/utils';
+import { Button } from '../ui/Button';
 
-interface Props {
+interface TableInputProps {
   id: string;
-  label: string;
   columns: string[];
-  value: Record<string, string>[];
-  onChange: (value: Record<string, string>[]) => void;
+  value?: Record<string, string>[];
+  onChange?: (data: Record<string, string>[]) => void;
   error?: string;
-  required?: boolean;
 }
 
-export function TableInput({ label, columns, value, onChange, error, required }: Props) {
-  const emptyRow = useMemo(() => Object.fromEntries(columns.map((column) => [column, ''])), [columns]);
+export function TableInput({ id, columns, value = [], onChange, error }: TableInputProps) {
+  
+  const handleAddRow = useCallback(() => {
+    const newRow: Record<string, string> = {};
+    columns.forEach((col) => { newRow[col] = ''; });
+    onChange?.([...value, newRow]);
+  }, [columns, value, onChange]);
 
-  const handleAddRow = () => onChange([...value, { ...emptyRow }]);
+  const handleDeleteRow = useCallback((index: number) => {
+    onChange?.(value.filter((_, i) => i !== index));
+  }, [value, onChange]);
 
-  const handleDeleteRow = (index: number) => onChange(value.filter((_, rowIndex) => rowIndex !== index));
-
-  const handleCellChange = (rowIndex: number, colIndex: number, cellValue: string) => {
-    const next = [...value];
+  const handleCellChange = useCallback((rowIndex: number, colIndex: number, cellValue: string) => {
+    const newData = [...value];
     const colName = columns[colIndex];
-    next[rowIndex] = { ...next[rowIndex], [colName]: cellValue };
-    onChange(next);
-  };
+    if (newData[rowIndex]) {
+      newData[rowIndex] = { ...newData[rowIndex], [colName]: cellValue };
+      onChange?.(newData);
+    }
+  }, [columns, value, onChange]);
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <label className="block text-sm font-semibold text-gray-700">
-          {label}
-          {required ? <span className="text-red-500 mr-1">*</span> : null}
-        </label>
-        <div className="flex flex-wrap items-center gap-2">
-          <ExcelImporter columns={columns} onImport={onChange} />
-          <Button variant="outline" size="sm" onClick={handleAddRow}>
-            إضافة صف يدويًا
-          </Button>
-        </div>
+    <div className="space-y-2">
+      <div className="overflow-x-auto rounded-lg border border-naif-gray text-xs">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-naif-primary/5">
+              {columns.map((col, i) => (
+                <th key={i} className="px-2 py-1.5 text-right font-normal text-naif-primary border-b border-naif-gray">
+                  {col}
+                </th>
+              ))}
+              <th className="w-8 px-1 py-1.5 border-b border-naif-gray"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {value.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length + 1} className="px-2 py-4 text-center text-naif-blueGray">
+                  لا توجد بيانات
+                </td>
+              </tr>
+            ) : (
+              value.map((row, rowIndex) => (
+                <tr key={rowIndex} className="border-b border-naif-gray last:border-b-0 hover:bg-naif-gray/10">
+                  {columns.map((col, colIndex) => (
+                    <td key={colIndex} className="p-1">
+                      <input
+                        type="text"
+                        value={row[col] || ''}
+                        onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
+                        placeholder={col}
+                        className="w-full px-2 py-1 text-xs border border-transparent focus:border-naif-gold rounded focus:outline-none bg-transparent"
+                      />
+                    </td>
+                  ))}
+                  <td className="p-1 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteRow(rowIndex)}
+                      className="text-naif-blueGray hover:text-naif-maroon p-0.5"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      
+      <div className="flex items-center justify-between">
+        <Button type="button" variant="ghost" size="sm" onClick={handleAddRow} className="text-xs">
+          + إضافة صف
+        </Button>
+        <span className="text-xs text-naif-blueGray">{value.length} صف</span>
       </div>
 
-      <Table columns={columns} data={value} onRowAdd={handleAddRow} onRowDelete={handleDeleteRow} onCellChange={handleCellChange} />
-      {error ? <p className="text-xs text-red-500">{error}</p> : null}
+      {error && <p className="text-xs text-naif-maroon">{error}</p>}
     </div>
   );
 }

@@ -1,75 +1,126 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Button } from '@/components/ui/Button';
+import { useState, useCallback, useEffect } from 'react';
+import { MessageTemplate, FormField as FormFieldType, FormData } from '@/lib/types';
+import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
+import { Textarea } from '../ui/Textarea';
+import { Select } from '../ui/Select';
+import { TableInput } from './TableInput';
+import { ExcelImporter } from './ExcelImporter';
 import { FormField } from './FormField';
-import { FormData, MessageTemplate } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
-interface Props {
+interface DynamicFormProps {
   template: MessageTemplate;
   onSubmit: (data: FormData) => void;
+  initialData?: FormData;
+  className?: string;
 }
 
-export function DynamicForm({ template, onSubmit }: Props) {
-  const initialValues = useMemo(() => {
-    const values: FormData = {};
-    template.fields.forEach((field) => {
-      values[field.id] = field.type === 'table' ? [] : field.defaultValue || '';
-    });
-    return values;
-  }, [template.fields]);
+const validateField = (field: FormFieldType, value: unknown): string | null => {
+  if (field.required && (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0))) {
+    return 'مطلوب';
+  }
+  return null;
+};
 
-  const [values, setValues] = useState<FormData>(initialValues);
+export function DynamicForm({ template, onSubmit, initialData, className }: DynamicFormProps) {
+  const [formData, setFormData] = useState<FormData>(initialData || {});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const setFieldValue = (fieldId: string, value: string | Record<string, string>[]) => {
-    setValues((prev) => ({ ...prev, [fieldId]: value }));
-    setErrors((prev) => ({ ...prev, [fieldId]: '' }));
-  };
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    } else {
+      const defaultData: FormData = {};
+      template.fields.forEach((field) => {
+        defaultData[field.id] = field.defaultValue || (field.type === 'table' ? [] : '');
+      });
+      setFormData(defaultData);
+    }
+  }, [template, initialData]);
 
-  const validate = () => {
-    const nextErrors: Record<string, string> = {};
+  const updateField = useCallback((fieldId: string, value: string | Record<string, string>[]) => {
+    setFormData((prev) => ({ ...prev, [fieldId]: value }));
+    if (errors[fieldId]) setErrors((prev) => { const n = { ...prev }; delete n[fieldId]; return n; });
+  }, [errors]);
 
+  const validateForm = useCallback((): boolean => {
+    const newErrors: Record<string, string> = {};
     template.fields.forEach((field) => {
-      const value = values[field.id];
-      if (!field.required) return;
-
-      if (field.type === 'table') {
-        if (!Array.isArray(value) || value.length === 0) {
-          nextErrors[field.id] = 'هذا الحقل مطلوب';
-        }
-      } else if (!String(value || '').trim()) {
-        nextErrors[field.id] = 'هذا الحقل مطلوب';
-      }
+      const error = validateField(field, formData[field.id]);
+      if (error) newErrors[field.id] = error;
     });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [template, formData]);
 
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    setIsSubmitting(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      onSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!validate()) return;
-    onSubmit(values);
+  const handleExcelImport = useCallback((fieldId: string, data: Record<string, string>[]) => {
+    updateField(fieldId, data);
+  }, [updateField]);
+
+  const renderField = (field: FormFieldType) => {
+    const value = formData[field.id];
+    const error = errors[field.id];
+
+    switch (field.type) {
+      case 'text':
+      case 'date':
+      case 'time':
+      case 'number':
+      case 'tel':
+      case 'email':
+        return (
+          <FormField key={field.id} label={field.label} required={field.required} error={error}>
+            <Input id={field.id} type={field.type} placeholder={field.placeholder} value={String(value || '')} onChange={(v) => updateField(field.id, v)} error={error} required={field.required} />
+          </FormField>
+        );
+      case 'textarea':
+        return (
+          <FormField key={field.id} label={field.label} required={field.required} error={error}>
+            <Textarea id={field.id} placeholder={field.placeholder} value={String(value || '')} onChange={(v) => updateField(field.id, v)} error={error} required={field.required} rows={3} />
+          </FormField>
+        );
+      case 'select':
+        return (
+          <FormField key={field.id} label={field.label} required={field.required} error={error}>
+            <Select id={field.id} options={field.options || []} value={String(value || '')} onChange={(v) => updateField(field.id, v)} error={error} required={field.required} placeholder={field.placeholder} />
+          </FormField>
+        );
+      case 'table':
+        const tableData = Array.isArray(value) ? value : [];
+        return (
+          <div key={field.id} className="space-y-2">
+            <FormField label={field.label} required={field.required} error={error}>
+              <TableInput id={field.id} columns={field.columns || []} value={tableData} onChange={(v) => updateField(field.id, v)} error={error} />
+            </FormField>
+            <ExcelImporter columns={field.columns} onImport={(data) => handleExcelImport(field.id, data)} />
+          </div>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {template.fields.map((field) => (
-          <div key={field.id} className={field.type === 'textarea' || field.type === 'table' ? 'md:col-span-2' : ''}>
-            <FormField
-              field={field}
-              value={values[field.id] as string | Record<string, string>[]}
-              error={errors[field.id]}
-              onChange={(value) => setFieldValue(field.id, value)}
-            />
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <Button type="submit" size="lg">
+    <form onSubmit={handleSubmit} className={cn('space-y-4', className)}>
+      {template.fields.map(renderField)}
+      <div className="pt-3">
+        <Button type="submit" variant="primary" size="lg" fullWidth isLoading={isSubmitting}>
           توليد الرسالة
         </Button>
       </div>
