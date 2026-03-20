@@ -1,11 +1,29 @@
-export const APP_CONFIG = {
-  appName: process.env.NEXT_PUBLIC_APP_NAME || 'منصة المراسلات الذكية',
-  organization: {
-    name: process.env.NEXT_PUBLIC_ORGANIZATION || 'جامعة نايف العربية للعلوم الأمنية',
-    training: 'وكالة الجامعة للتدريب',
-    department: 'إدارة عمليات التدريب'
+export const appConfig = {
+  name: 'منصة المراسلات الذكية',
+  shortName: 'SMART-MAIL',
+  description:
+    'منصة عربية ذكية لصياغة المراسلات المؤسسية والتشغيلية لإدارة عمليات التدريب بجامعة نايف العربية للعلوم الأمنية.',
+  appName: 'nauss-smart-correspondence',
+  defaultDirection: 'rtl',
+  defaultLanguage: 'ar',
+  locale: 'ar-SA',
+
+  signature:
+    process.env.NEXT_PUBLIC_DEFAULT_SIGNATURE ||
+    `فريق عمل إدارة عمليات التدريب
+وكالة الجامعة للتدريب`,
+
+  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'OD@nauss.edu.sa',
+  supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'OD@nauss.edu.sa',
+
+  features: {
+    weeklyWorkflow: true,
+    scenarioLibrary: true,
+    excelImport: true,
+    outlookIntegration: false,
+    directSend: false,
+    draftMode: true,
   },
-  signature: process.env.NEXT_PUBLIC_DEFAULT_SIGNATURE || 'فريق عمل إدارة عمليات التدريب
-وكالة الجامعة للتدريب',
-  locale: 'ar-SA'
 } as const;
+
+export type AppConfig = typeof appConfig;
