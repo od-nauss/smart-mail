@@ -8,6 +8,12 @@ export const appConfig = {
   defaultLanguage: 'ar',
   locale: 'ar-SA',
 
+  organization: {
+    department: 'إدارة عمليات التدريب',
+    training: 'وكالة الجامعة للتدريب',
+    name: 'جامعة نايف العربية للعلوم الأمنية',
+  },
+
   signature:
     process.env.NEXT_PUBLIC_DEFAULT_SIGNATURE ||
     `فريق عمل إدارة عمليات التدريب
