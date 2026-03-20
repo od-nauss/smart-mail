@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    direction: rtl;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-sand-50 text-slate-900 font-cairo;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .container-app {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .glass-panel {
+    @apply bg-white/80 backdrop-blur border border-white/60 shadow-soft;
+  }
+
+  .hero-gradient {
+    background:
+      radial-gradient(circle at top right, rgba(208,178,132,.22), transparent 30%),
+      radial-gradient(circle at left, rgba(1,101,100,.14), transparent 28%),
+      linear-gradient(180deg, rgba(255,255,255,0.95), rgba(250,249,247,1));
+  }
+
+  .email-preview table {
+    @apply w-full border-collapse my-4;
+  }
+
+  .email-preview th {
+    @apply bg-primary-500 text-white border border-slate-200 p-3 text-right;
+  }
+
+  .email-preview td {
+    @apply border border-slate-200 p-3 align-top;
+  }
+}
