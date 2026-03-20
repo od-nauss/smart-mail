@@ -1,89 +1,38 @@
 'use client';
 
-import { ChangeEvent, SelectHTMLAttributes } from 'react';
+import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-type Option = {
-  label: string;
-  value: string;
-};
-
-type InputSize = 'sm' | 'md' | 'lg';
-
-interface Props
-  extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size' | 'onChange'> {
+interface Props extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
-  options: Option[];
-  value: string;
-  onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
   error?: string;
   hint?: string;
-  required?: boolean;
+  options: { label: string; value: string }[];
   placeholder?: string;
-  inputSize?: InputSize;
+  inputSize?: 'sm' | 'md' | 'lg';
 }
 
-const sizeClasses: Record<InputSize, string> = {
+const sizeClasses = {
   sm: 'h-9 px-3 text-sm',
-  md: 'h-11 px-3.5 text-sm',
+  md: 'h-11 px-4 text-sm',
   lg: 'h-12 px-4 text-base',
 };
 
-export default function Select({
-  label,
-  options,
-  value,
-  onChange,
-  error,
-  hint,
-  required,
-  placeholder,
-  className,
-  disabled,
-  inputSize = 'md',
-  id,
-  ...props
-}: Props) {
-  const selectId = id || `select-${label || 'field'}`;
-
+export default function Select({ label, error, hint, options, className, placeholder, inputSize = 'md', ...props }: Props) {
   return (
-    <div className="w-full space-y-1.5">
-      {label && (
-        <label htmlFor={selectId} className="block text-sm font-semibold text-slate-800">
-          {label}
-          {required && <span className="mr-1 text-red-500">*</span>}
-        </label>
-      )}
-
+    <label className="block">
+      {label && <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>}
       <select
-        id={selectId}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        className={cn(
-          'w-full rounded-xl border bg-white text-slate-800 outline-none transition',
-          'focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20',
-          'disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400',
-          error ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-300',
-          sizeClasses[inputSize],
-          className
-        )}
+        className={cn('w-full rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-200 disabled:cursor-not-allowed disabled:bg-slate-100', sizeClasses[inputSize], className)}
         {...props}
       >
-        {placeholder && <option value="">{placeholder}</option>}
-
+        <option value="">{placeholder || 'اختر...'}</option>
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
+          <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </select>
-
-      {error ? (
-        <p className="text-xs text-red-600">{error}</p>
-      ) : hint ? (
-        <p className="text-xs text-slate-500">{hint}</p>
-      ) : null}
-    </div>
+      {hint && !error && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
+      {error && <span className="mt-1 block text-xs text-red-600">{error}</span>}
+    </label>
   );
 }
