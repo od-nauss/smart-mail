@@ -110,19 +110,8 @@ body {
   border: 1px solid rgba(208, 178, 132, 0.24);
 }
 
-.grid-card-soft {
-  background: #ffffff;
-  border: 1px solid rgba(214, 215, 212, 0.95);
-  box-shadow: 0 8px 24px -20px rgba(1, 101, 100, 0.12);
-}
-
-.grid-card-soft:hover {
-  box-shadow: 0 14px 26px -22px rgba(1, 101, 100, 0.16);
-}
-
 .pattern-dots {
-  background-image:
-    radial-gradient(rgba(1, 101, 100, 0.08) 0.8px, transparent 0.8px);
+  background-image: radial-gradient(rgba(1, 101, 100, 0.08) 0.8px, transparent 0.8px);
   background-size: 22px 22px;
 }
 

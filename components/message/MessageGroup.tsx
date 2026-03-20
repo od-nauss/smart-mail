@@ -42,12 +42,12 @@ export function MessageGroup({ group, children, className }: MessageGroupProps) 
   return (
     <section
       className={cn(
-        'infographic-panel grid-card-soft pattern-dots rounded-[22px] p-4 sm:p-5',
+        'infographic-panel pattern-dots rounded-[22px] p-4 sm:p-5',
         'relative overflow-hidden transition-all duration-200',
         className
       )}
     >
-      <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-[#016564] via-[#498983] to-[#d0b284]" />
+      <div className="absolute right-0 top-0 h-full w-1 bg-[#016564]" />
 
       <div className="relative mb-4 flex items-center justify-between border-b border-[#e8ecec] pb-3">
         <div className="flex items-center gap-3">
@@ -65,10 +65,6 @@ export function MessageGroup({ group, children, className }: MessageGroupProps) 
               </p>
             ) : null}
           </div>
-        </div>
-
-        <div className="hidden rounded-full bg-[#f4efe6] px-2.5 py-1 text-xs text-[#b89a5e] sm:block">
-          قوالب جاهزة
         </div>
       </div>
 

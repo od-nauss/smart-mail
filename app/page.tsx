@@ -78,31 +78,9 @@ export default function HomePage() {
 
       <main className="flex-1 py-5 sm:py-7">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-6 fade-in">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-[#e3e7e7] bg-white p-4 shadow-sm">
-                <h2 className="text-base font-semibold text-[#016564] sm:text-lg">
-                  كاتب محتوى وصائغ مراسلات
-                </h2>
-                <p className="mt-1 text-sm leading-7 text-[#8c6968]">
-                  اكتب طلبك أو هدفك، وسيتم توليد رسالة عربية رسمية بصياغة احترافية ونبرة إدارية مناسبة.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-[#e3e7e7] bg-white p-4 shadow-sm">
-                <h2 className="text-base font-semibold text-[#016564] sm:text-lg">
-                  تنسيق تلقائي احترافي
-                </h2>
-                <p className="mt-1 text-sm leading-7 text-[#8c6968]">
-                  أدخل بيانات الدورة مثل الاسم والتاريخ وعدد المشاركين، وسيتم تنسيق الرسالة والجداول بشكل مرتب وجاهز.
-                </p>
-              </div>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <MessageGroup group={MESSAGE_GROUPS[0]} className="fade-in">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {templatesByGroup.weekly.map((template) => (
                   <MessageTypeCard
                     key={template.id}
@@ -115,7 +93,7 @@ export default function HomePage() {
             </MessageGroup>
 
             <MessageGroup group={MESSAGE_GROUPS[1]} className="fade-in">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {templatesByGroup.operational.map((template) => (
                   <MessageTypeCard
                     key={template.id}
@@ -128,7 +106,7 @@ export default function HomePage() {
             </MessageGroup>
 
             <MessageGroup group={MESSAGE_GROUPS[2]} className="fade-in">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {templatesByGroup.leadership.map((template) => (
                   <MessageTypeCard
                     key={template.id}
@@ -141,7 +119,7 @@ export default function HomePage() {
             </MessageGroup>
 
             <MessageGroup group={MESSAGE_GROUPS[3]} className="fade-in">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {templatesByGroup.general.map((template) => (
                   <MessageTypeCard
                     key={template.id}
