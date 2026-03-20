@@ -42,12 +42,13 @@ export function MessageGroup({ group, children, className }: MessageGroupProps) 
   return (
     <section
       className={cn(
-        'infographic-panel pattern-dots rounded-[22px] p-4 sm:p-5',
+        'infographic-panel pattern-dots rounded-[24px] p-4 sm:p-5',
         'relative overflow-hidden transition-all duration-200',
         className
       )}
     >
-      <div className="absolute right-0 top-0 h-full w-1 bg-[#016564]" />
+      <div className="absolute right-0 top-0 h-full w-1.5 bg-[#016564]" />
+      <div className="absolute left-4 top-4 h-10 w-10 rounded-full bg-[#d0b284]/10 blur-xl" />
 
       <div className="relative mb-4 flex items-center justify-between border-b border-[#e8ecec] pb-3">
         <div className="flex items-center gap-3">

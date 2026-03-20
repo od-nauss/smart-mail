@@ -73,11 +73,39 @@ export default function HomePage() {
   }, [closeModal]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="page-shell min-h-screen flex flex-col">
       <Header />
 
-      <main className="flex-1 py-5 sm:py-7">
+      <main className="flex-1 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <section className="hero-panel mb-5 rounded-[28px] px-5 py-6 text-white sm:px-7 sm:py-7">
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold sm:text-3xl">
+                  منصة مراسلات تنفيذية
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm text-white/85 sm:text-base">
+                  اختر نوع المراسلة مباشرة، عبّئ النموذج، ثم انسخ الرسالة بصياغة عربية رسمية مرتبة وجاهزة.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 sm:min-w-[280px]">
+                <div className="rounded-2xl border border-white/15 bg-white/10 px-3 py-3 text-center">
+                  <div className="text-lg font-semibold">4</div>
+                  <div className="text-xs text-white/80">مجموعات</div>
+                </div>
+                <div className="rounded-2xl border border-white/15 bg-white/10 px-3 py-3 text-center">
+                  <div className="text-lg font-semibold">جاهز</div>
+                  <div className="text-xs text-white/80">للاستخدام</div>
+                </div>
+                <div className="rounded-2xl border border-white/15 bg-white/10 px-3 py-3 text-center">
+                  <div className="text-lg font-semibold">RTL</div>
+                  <div className="text-xs text-white/80">واجهة عربية</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <MessageGroup group={MESSAGE_GROUPS[0]} className="fade-in">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

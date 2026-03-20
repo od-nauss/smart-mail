@@ -4,7 +4,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-[#e5e7e7] bg-white/95 backdrop-blur">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex min-h-[78px] items-center justify-between gap-4">
+        <div className="flex min-h-[86px] items-center justify-between gap-4">
           <img
             src="/naif-logo.png"
             alt="شعار جامعة نايف"
@@ -13,7 +13,7 @@ export function Header() {
 
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <h1 className="text-lg font-semibold text-[#016564] sm:text-xl lg:text-[1.45rem]">
+              <h1 className="text-xl font-semibold tracking-tight text-[#016564] sm:text-2xl">
                 منصة المراسلات الذكية
               </h1>
               <p className="text-xs text-[#8c6968] sm:text-sm">
@@ -21,7 +21,7 @@ export function Header() {
               </p>
             </div>
 
-            <div className="hidden h-11 w-11 items-center justify-center rounded-2xl bg-[#016564] text-white sm:flex">
+            <div className="hidden h-12 w-12 items-center justify-center rounded-2xl bg-[#016564] text-white shadow-[0_14px_24px_-18px_rgba(1,101,100,0.55)] sm:flex">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
                 <path d="M4 5h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2z" />
                 <path d="M22 7l-10 7L2 7" />
