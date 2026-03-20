@@ -4,7 +4,6 @@ import { useState, useCallback } from 'react';
 import { GeneratedMessage } from '@/lib/types';
 import { Button } from '../ui/Button';
 import { showToast } from '../ui/Toast';
-import { copyToClipboard } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 interface MessagePreviewProps {
@@ -21,16 +20,42 @@ const CopyIcon = () => (
   </svg>
 );
 
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const success = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return success;
+    } catch {
+      return false;
+    }
+  }
+}
+
 export function MessagePreview({ message, onEdit, onNew, className }: MessagePreviewProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
     if (!message) return;
-    const success = await copyToClipboard(message.fullText);
+
+    const success = await copyText(message.fullText);
+
     if (success) {
       setCopied(true);
       showToast('تم نسخ الرسالة', 'success');
       setTimeout(() => setCopied(false), 2000);
+    } else {
+      showToast('تعذر نسخ الرسالة', 'error');
     }
   }, [message]);
 
@@ -38,32 +63,34 @@ export function MessagePreview({ message, onEdit, onNew, className }: MessagePre
 
   return (
     <div className={cn('space-y-3', className)}>
-      {/* الموضوع */}
       <div className="bg-naif-gray/30 rounded-lg p-3">
         <span className="text-xs text-naif-blueGray block mb-1">الموضوع</span>
         <p className="text-sm font-medium text-naif-primary">{message.subject}</p>
       </div>
 
-      {/* نص الرسالة */}
       <div className="bg-naif-white border border-naif-gray rounded-lg p-3">
         <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{message.body}</p>
       </div>
 
-      {/* التوقيع */}
       <div className="text-xs text-naif-blueGray whitespace-pre-line border-t border-naif-gray pt-3">
         {message.signature}
       </div>
 
-      {/* الأزرار */}
       <div className="flex gap-2 pt-2">
         <Button variant="gold" size="md" fullWidth onClick={handleCopy} icon={<CopyIcon />}>
           {copied ? 'تم النسخ' : 'نسخ الرسالة'}
         </Button>
+
         {onEdit && (
-          <Button variant="outline" size="md" onClick={onEdit}>تعديل</Button>
+          <Button variant="outline" size="md" onClick={onEdit}>
+            تعديل
+          </Button>
         )}
+
         {onNew && (
-          <Button variant="secondary" size="md" onClick={onNew}>جديدة</Button>
+          <Button variant="secondary" size="md" onClick={onNew}>
+            جديدة
+          </Button>
         )}
       </div>
     </div>
