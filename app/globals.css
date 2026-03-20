@@ -54,10 +54,7 @@ label {
 }
 
 body {
-  background:
-    radial-gradient(circle at top right, rgba(208, 178, 132, 0.10), transparent 22%),
-    radial-gradient(circle at top left, rgba(1, 101, 100, 0.08), transparent 20%),
-    linear-gradient(180deg, #f8f9f9 0%, #f4f6f6 100%);
+  background: #f8f9f9;
   color: #374151;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -103,36 +100,30 @@ body {
 }
 
 .infographic-panel {
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,249,249,0.95) 100%);
-  border: 1px solid rgba(214, 215, 212, 0.9);
-  box-shadow:
-    0 10px 30px -24px rgba(1, 101, 100, 0.22),
-    0 1px 0 rgba(255,255,255,0.9) inset;
+  background: #ffffff;
+  border: 1px solid rgba(214, 215, 212, 0.95);
+  box-shadow: 0 10px 26px -22px rgba(1, 101, 100, 0.16);
 }
 
 .infographic-chip {
-  background: linear-gradient(135deg, rgba(1,101,100,0.08), rgba(208,178,132,0.14));
-  border: 1px solid rgba(208,178,132,0.28);
+  background: rgba(1, 101, 100, 0.06);
+  border: 1px solid rgba(208, 178, 132, 0.24);
 }
 
 .grid-card-soft {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(248,249,249,0.98) 100%);
-  border: 1px solid rgba(214,215,212,0.9);
-  box-shadow: 0 8px 24px -20px rgba(1, 101, 100, 0.15);
+  background: #ffffff;
+  border: 1px solid rgba(214, 215, 212, 0.95);
+  box-shadow: 0 8px 24px -20px rgba(1, 101, 100, 0.12);
 }
 
 .grid-card-soft:hover {
-  box-shadow: 0 16px 30px -22px rgba(1, 101, 100, 0.20);
+  box-shadow: 0 14px 26px -22px rgba(1, 101, 100, 0.16);
 }
 
 .pattern-dots {
   background-image:
-    radial-gradient(rgba(1, 101, 100, 0.10) 0.8px, transparent 0.8px),
-    radial-gradient(rgba(208, 178, 132, 0.14) 0.8px, transparent 0.8px);
-  background-position: 0 0, 14px 14px;
-  background-size: 28px 28px;
+    radial-gradient(rgba(1, 101, 100, 0.08) 0.8px, transparent 0.8px);
+  background-size: 22px 22px;
 }
 
 :focus-visible {

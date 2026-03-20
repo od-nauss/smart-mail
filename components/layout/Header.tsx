@@ -21,11 +21,11 @@ export function Header() {
                 منصة المراسلات الذكية
               </h1>
               <p className="text-xs text-[#8c6968] sm:text-sm">
-                واجهة سريعة لإنشاء المراسلات الرسمية
+                واجهة ذكية لإنشاء المراسلات الرسمية
               </p>
             </div>
 
-            <div className="hidden h-11 w-11 items-center justify-center rounded-2xl border border-[#d8c3a2] bg-gradient-to-br from-[#016564] to-[#498983] text-white sm:flex">
+            <div className="hidden h-11 w-11 items-center justify-center rounded-2xl border border-[#d8c3a2] bg-[#016564] text-white sm:flex">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
                 <path d="M4 5h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2z" />
                 <path d="M22 7l-10 7L2 7" />

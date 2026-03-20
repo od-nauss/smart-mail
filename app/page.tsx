@@ -78,19 +78,26 @@ export default function HomePage() {
 
       <main className="flex-1 py-5 sm:py-7">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-6 text-center fade-in">
-            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-[#e1d3b8] bg-white px-4 py-2 text-xs text-[#8c6968] shadow-sm">
-              <span className="h-2 w-2 rounded-full bg-[#d0b284]" />
-              واجهة ذكية وسريعة للمراسلات الرسمية
+          <div className="mb-6 fade-in">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-[#e3e7e7] bg-white p-4 shadow-sm">
+                <h2 className="text-base font-semibold text-[#016564] sm:text-lg">
+                  كاتب محتوى وصائغ مراسلات
+                </h2>
+                <p className="mt-1 text-sm leading-7 text-[#8c6968]">
+                  اكتب طلبك أو هدفك، وسيتم توليد رسالة عربية رسمية بصياغة احترافية ونبرة إدارية مناسبة.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-[#e3e7e7] bg-white p-4 shadow-sm">
+                <h2 className="text-base font-semibold text-[#016564] sm:text-lg">
+                  تنسيق تلقائي احترافي
+                </h2>
+                <p className="mt-1 text-sm leading-7 text-[#8c6968]">
+                  أدخل بيانات الدورة مثل الاسم والتاريخ وعدد المشاركين، وسيتم تنسيق الرسالة والجداول بشكل مرتب وجاهز.
+                </p>
+              </div>
             </div>
-
-            <h2 className="mt-4 text-2xl font-semibold text-[#016564] sm:text-3xl">
-              إدارة عمليات التدريب
-            </h2>
-
-            <p className="mt-2 text-sm text-[#8c6968] sm:text-base">
-              اختر نوع المراسلة لإنشاء الرسالة مباشرة
-            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
