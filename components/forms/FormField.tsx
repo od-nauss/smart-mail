@@ -59,7 +59,7 @@ export function FormField({ field, value, error, onChange }: Props) {
         <Input
           id={field.id}
           label={field.label}
-          type={field.type === 'textarea' ? 'text' : field.type}
+          type={field.type}
           placeholder={field.placeholder}
           value={typeof value === 'string' ? value : ''}
           onChange={onChange as (value: string) => void}
