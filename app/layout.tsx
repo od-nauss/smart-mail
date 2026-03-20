@@ -51,7 +51,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ar" dir="rtl" className={cairo.variable}>
       <body
-        className={`${cairo.className} antialiased bg-naif-cream text-gray-800 selection:bg-naif-gold selection:text-naif-dark`}
+        className={`
+          ${cairo.className}
+          font-cairo
+          antialiased
+          bg-naif-cream
+          text-gray-800
+          selection:bg-naif-gold
+          selection:text-naif-dark
+        `}
       >
         <a
           href="#main-content"
