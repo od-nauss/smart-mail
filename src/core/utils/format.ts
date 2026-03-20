@@ -1,198 +1,85 @@
-'use client';
+export function formatNumber(value: number | string): string {
+  const number = typeof value === 'string' ? Number(value) : value;
+  if (Number.isNaN(number)) return '0';
 
-import { useEffect } from 'react';
-import { cn } from '@/lib/utils';
-import { Scenario, ScenarioField, getFieldDefaultValue } from '@/core/types';
-import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
-import Textarea from '@/components/ui/Textarea';
-import Checkbox from '@/components/ui/Checkbox';
-
-export interface ScenarioFormProps {
-  scenario: Scenario;
-  values: Record<string, string | number | boolean>;
-  onChange: (values: Record<string, string | number | boolean>) => void;
-  errors?: Record<string, string>;
+  return new Intl.NumberFormat('ar-SA').format(number);
 }
 
-export default function ScenarioForm({
-  scenario,
-  values,
-  onChange,
-  errors = {},
-}: ScenarioFormProps) {
-  useEffect(() => {
-    const defaultValues: Record<string, string | number | boolean> = {};
+export function formatDate(
+  value: string | Date,
+  options?: Intl.DateTimeFormatOptions
+): string {
+  const date = value instanceof Date ? value : new Date(value);
 
-    scenario.fields.forEach((field) => {
-      defaultValues[field.id] = values[field.id] ?? getFieldDefaultValue(field);
-    });
+  if (Number.isNaN(date.getTime())) return '';
 
-    onChange(defaultValues);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenario.id]);
-
-  const updateField = (fieldId: string, value: string | number | boolean) => {
-    onChange({ ...values, [fieldId]: value });
-  };
-
-  const shouldShowField = (field: ScenarioField): boolean => {
-    if (!field.conditional) return true;
-
-    const {
-      dependsOn,
-      value: expectedValue,
-      operator = 'equals',
-    } = field.conditional;
-
-    const dependentValue = values[dependsOn];
-
-    switch (operator) {
-      case 'equals':
-        return dependentValue === expectedValue;
-      case 'notEquals':
-        return dependentValue !== expectedValue;
-      case 'contains':
-        return String(dependentValue ?? '').includes(String(expectedValue ?? ''));
-      case 'gt':
-        return Number(dependentValue) > Number(expectedValue);
-      case 'lt':
-        return Number(dependentValue) < Number(expectedValue);
-      default:
-        return true;
+  return new Intl.DateTimeFormat(
+    'ar-SA',
+    options || {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
     }
-  };
+  ).format(date);
+}
 
-  const groupedFields = scenario.fields.reduce(
-    (acc, field) => {
-      const group = field.group || 'default';
-      if (!acc[group]) acc[group] = [];
-      acc[group].push(field);
-      return acc;
-    },
-    {} as Record<string, ScenarioField[]>
-  );
+export function formatDateRange(startDate: string | Date, endDate: string | Date): string {
+  const start = formatDate(startDate);
+  const end = formatDate(endDate);
 
-  const renderField = (field: ScenarioField) => {
-    if (!shouldShowField(field)) return null;
+  if (!start && !end) return '';
+  if (!start) return end;
+  if (!end) return start;
 
-    const fieldError = errors[field.id];
-    const fieldValue = values[field.id];
+  return `${start} - ${end}`;
+}
 
-    switch (field.type) {
-      case 'text':
-      case 'email':
-      case 'phone':
-      case 'date':
-      case 'time':
-      case 'url':
-      case 'currency':
-        return (
-          <Input
-            label={field.label}
-            type={
-              field.type === 'email'
-                ? 'email'
-                : field.type === 'date'
-                ? 'date'
-                : field.type === 'time'
-                ? 'time'
-                : field.type === 'phone'
-                ? 'tel'
-                : field.type === 'url'
-                ? 'url'
-                : 'text'
-            }
-            required={field.required}
-            value={String(fieldValue ?? '')}
-            onChange={(e) => updateField(field.id, e.target.value)}
-            placeholder={field.placeholder}
-            error={fieldError}
-            hint={field.helperText}
-          />
-        );
+export function formatDuration(value: string | number): string {
+  if (typeof value === 'number') {
+    if (value === 1) return 'يوم واحد';
+    if (value === 2) return 'يومان';
+    if (value >= 3 && value <= 10) return `${formatNumber(value)} أيام`;
+    return `${formatNumber(value)} يومًا`;
+  }
 
-      case 'number':
-        return (
-          <Input
-            label={field.label}
-            type="number"
-            required={field.required}
-            value={fieldValue !== undefined ? String(fieldValue) : ''}
-            onChange={(e) =>
-              updateField(field.id, e.target.value === '' ? 0 : Number(e.target.value))
-            }
-            placeholder={field.placeholder}
-            error={fieldError}
-            hint={field.helperText}
-          />
-        );
+  return value || '';
+}
 
-      case 'textarea':
-        return (
-          <Textarea
-            label={field.label}
-            required={field.required}
-            value={String(fieldValue ?? '')}
-            onChange={(e) => updateField(field.id, e.target.value)}
-            placeholder={field.placeholder}
-            error={fieldError}
-            hint={field.helperText}
-            rows={3}
-          />
-        );
+export function getCurrentWeekString(): string {
+  const today = new Date();
+  const day = today.getDay();
+  const diffToSaturday = (day + 1) % 7;
 
-      case 'select':
-        return (
-          <Select
-            label={field.label}
-            required={field.required}
-            options={field.options || []}
-            value={String(fieldValue ?? '')}
-            onChange={(e) => updateField(field.id, e.target.value)}
-            error={fieldError}
-            hint={field.helperText}
-          />
-        );
+  const start = new Date(today);
+  start.setDate(today.getDate() - diffToSaturday);
 
-      case 'checkbox':
-        return (
-          <Checkbox
-            label={field.label}
-            checked={Boolean(fieldValue)}
-            onChange={(e) => updateField(field.id, e.target.checked)}
-            description={field.helperText}
-          />
-        );
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
 
-      default:
-        return null;
-    }
-  };
+  return `${formatDate(start)} - ${formatDate(end)}`;
+}
 
-  return (
-    <div className="space-y-6">
-      {Object.entries(groupedFields).map(([groupName, fields]) => (
-        <div key={groupName}>
-          {groupName !== 'default' && (
-            <h4 className="mb-3 font-semibold text-gray-900">{groupName}</h4>
-          )}
+export function formatMultilineText(value?: string | null): string {
+  if (!value) return '';
 
-          <div className="grid gap-4 md:grid-cols-2">
-            {fields.map((field) => (
-              <div
-                key={field.id}
-                className={cn(
-                  field.type === 'textarea' && 'md:col-span-2',
-                  field.type === 'checkbox' && 'md:col-span-2'
-                )}
-              >
-                {renderField(field)}
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('<br/>');
+}
+
+export function nl2br(value?: string | null): string {
+  return formatMultilineText(value);
+}
+
+export function stripHtml(value?: string | null): string {
+  if (!value) return '';
+  return value.replace(/<[^>]*>/g, '').trim();
+}
+
+export function truncateText(value: string, maxLength = 120): string {
+  if (!value) return '';
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength).trim()}...`;
 }
