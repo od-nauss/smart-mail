@@ -19,12 +19,15 @@ export default function HomePage() {
   const [generatedMessage, setGeneratedMessage] = useState<GeneratedMessage | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  const templatesByGroup = useMemo(() => ({
-    weekly: getTemplatesByGroup('weekly'),
-    operational: getTemplatesByGroup('operational'),
-    leadership: getTemplatesByGroup('leadership'),
-    general: getTemplatesByGroup('general'),
-  }), []);
+  const templatesByGroup = useMemo(
+    () => ({
+      weekly: getTemplatesByGroup('weekly'),
+      operational: getTemplatesByGroup('operational'),
+      leadership: getTemplatesByGroup('leadership'),
+      general: getTemplatesByGroup('general'),
+    }),
+    []
+  );
 
   const handleTemplateSelect = useCallback((template: MessageTemplate) => {
     setSelectedTemplate(template);
@@ -52,7 +55,7 @@ export default function HomePage() {
   }, [selectedTemplate]);
 
   const handleEdit = useCallback(() => setShowPreview(false), []);
-  
+
   const handleNew = useCallback(() => {
     setGeneratedMessage(null);
     setShowPreview(false);
@@ -63,36 +66,36 @@ export default function HomePage() {
   const handleModalClose = useCallback(() => {
     closeModal();
     setTimeout(() => {
-      if (!isOpen) {
-        setSelectedTemplate(null);
-        setGeneratedMessage(null);
-        setShowPreview(false);
-      }
-    }, 300);
-  }, [closeModal, isOpen]);
+      setSelectedTemplate(null);
+      setGeneratedMessage(null);
+      setShowPreview(false);
+    }, 200);
+  }, [closeModal]);
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
-      <main className="flex-1 py-4 sm:py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          {/* عنوان مختصر */}
-          <div className="text-center mb-4 sm:mb-6 fade-in">
-            <h2 className="text-lg sm:text-xl font-semibold text-naif-primary mb-1">
+
+      <main className="flex-1 py-5 sm:py-7">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-6 text-center fade-in">
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-[#e1d3b8] bg-white px-4 py-2 text-xs text-[#8c6968] shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-[#d0b284]" />
+              واجهة ذكية وسريعة للمراسلات الرسمية
+            </div>
+
+            <h2 className="mt-4 text-2xl font-semibold text-[#016564] sm:text-3xl">
               إدارة عمليات التدريب
             </h2>
-            <p className="text-sm text-naif-blueGray">
+
+            <p className="mt-2 text-sm text-[#8c6968] sm:text-base">
               اختر نوع المراسلة لإنشاء الرسالة مباشرة
             </p>
           </div>
 
-          {/* شبكة المجموعات الأربع - مرئية بالكامل */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <MessageGroup group={MESSAGE_GROUPS[0]} className="fade-in">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {templatesByGroup.weekly.map((template) => (
                   <MessageTypeCard
                     key={template.id}
@@ -105,7 +108,7 @@ export default function HomePage() {
             </MessageGroup>
 
             <MessageGroup group={MESSAGE_GROUPS[1]} className="fade-in">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {templatesByGroup.operational.map((template) => (
                   <MessageTypeCard
                     key={template.id}
@@ -118,7 +121,7 @@ export default function HomePage() {
             </MessageGroup>
 
             <MessageGroup group={MESSAGE_GROUPS[2]} className="fade-in">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {templatesByGroup.leadership.map((template) => (
                   <MessageTypeCard
                     key={template.id}
@@ -131,7 +134,7 @@ export default function HomePage() {
             </MessageGroup>
 
             <MessageGroup group={MESSAGE_GROUPS[3]} className="fade-in">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {templatesByGroup.general.map((template) => (
                   <MessageTypeCard
                     key={template.id}
@@ -142,7 +145,6 @@ export default function HomePage() {
                 ))}
               </div>
             </MessageGroup>
-
           </div>
         </div>
       </main>
@@ -156,10 +158,7 @@ export default function HomePage() {
         size="lg"
       >
         {selectedTemplate && !showPreview && (
-          <DynamicForm
-            template={selectedTemplate}
-            onSubmit={handleFormSubmit}
-          />
+          <DynamicForm template={selectedTemplate} onSubmit={handleFormSubmit} />
         )}
 
         {showPreview && generatedMessage && (

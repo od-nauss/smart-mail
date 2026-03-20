@@ -13,23 +13,26 @@ interface MessageTypeCardProps {
 export function MessageTypeCard({
   template,
   onClick,
-  variant = 'grid',
   className,
 }: MessageTypeCardProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
-        'group text-right px-2.5 py-2 rounded-md',
-        'bg-naif-gray/30 hover:bg-naif-gold/20',
-        'transition-all duration-150',
-        'border border-transparent hover:border-naif-gold/30',
-        'focus:outline-none focus:ring-1 focus:ring-naif-primary/30',
-        'text-xs sm:text-sm text-gray-600 group-hover:text-naif-primary',
+        'group relative overflow-hidden rounded-xl border border-[#e6ebeb] bg-white/90 px-3 py-3 text-right',
+        'transition-all duration-200 hover:-translate-y-[1px] hover:border-[#d0b284] hover:shadow-[0_10px_24px_-18px_rgba(1,101,100,0.35)]',
+        'focus:outline-none focus:ring-2 focus:ring-[#016564]/20',
         className
       )}
     >
-      <span className="font-normal">{template.title}</span>
+      <span className="absolute inset-y-0 right-0 w-1 rounded-r-xl bg-gradient-to-b from-[#016564] to-[#d0b284] opacity-80" />
+
+      <div className="pr-2">
+        <span className="block text-sm font-medium text-[#2f4f4f] transition-colors group-hover:text-[#016564] sm:text-[15px]">
+          {template.title}
+        </span>
+      </div>
     </button>
   );
 }
