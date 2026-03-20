@@ -1,28 +1,29 @@
-import { Card } from '@/components/ui/Card';
-import { MessageGroupInfo } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { ReactNode } from 'react';
+import { MessageGroup as MessageGroupType } from '@/lib/types';
 
 interface Props {
-  group: MessageGroupInfo;
-  children: React.ReactNode;
+  group: MessageGroupType;
+  children: ReactNode;
   className?: string;
 }
 
-export function MessageGroup({ group, children, className }: Props) {
+export function MessageGroup({ group, children, className = '' }: Props) {
   return (
-    <Card className={cn('group-card fade-in', className)} hover padding="lg">
-      <div className="mb-5">
-        <div className="mb-3 flex items-center gap-3">
-          <div className={cn('icon-container flex h-11 w-11 items-center justify-center rounded-2xl', group.color === 'gold' ? 'text-naif-goldDark' : 'text-naif-primary')}>
-            <span className="text-lg font-bold">{group.title.slice(0, 1)}</span>
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-naif-primary">{group.title}</h2>
-            <p className="text-sm text-gray-500">{group.description}</p>
-          </div>
+    <section
+      className={`rounded-2xl border border-[#e7dfd2] bg-white p-4 sm:p-5 ${className}`}
+    >
+      <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#f1ece3] pb-3">
+        <div>
+          <h3 className="text-xl font-medium text-[#016564]">{group.title}</h3>
+          {group.description ? (
+            <p className="mt-1 text-sm text-gray-500">{group.description}</p>
+          ) : null}
         </div>
+
+        <span className="mt-1 h-4 w-1 rounded-full bg-[#d0b284]" />
       </div>
+
       {children}
-    </Card>
+    </section>
   );
 }

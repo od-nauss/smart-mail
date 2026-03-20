@@ -1,6 +1,4 @@
-import { Badge } from '@/components/ui/Badge';
 import { MessageTemplate } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 interface Props {
   template: MessageTemplate;
@@ -9,23 +7,35 @@ interface Props {
 }
 
 export function MessageTypeCard({ template, onClick, variant = 'grid' }: Props) {
+  const fieldsCount = Array.isArray(template.fields) ? template.fields.length : 0;
+  const isList = variant === 'list';
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        'w-full rounded-2xl border border-naif-gold/20 bg-white/80 p-4 text-right transition-all duration-300 hover:-translate-y-1 hover:shadow-lg',
-        variant === 'list' ? 'flex items-center justify-between gap-4' : 'min-h-[150px] flex flex-col justify-between'
-      )}
+      className={`
+        w-full rounded-xl border border-[#ece4d7] bg-[#fcfbf8] text-right transition
+        hover:border-[#d0b284] hover:bg-white
+        ${isList ? 'px-4 py-4' : 'px-4 py-5'}
+      `}
     >
-      <div className={cn(variant === 'list' ? 'flex-1' : '')}>
-        <h3 className="mb-2 text-sm sm:text-base font-bold text-naif-primary">{template.title}</h3>
-        <p className="text-xs sm:text-sm leading-6 text-gray-500">{template.description}</p>
-      </div>
-      <div className={cn('mt-3', variant === 'list' && 'mt-0')}>
-        <Badge variant={template.group === 'operational' || template.group === 'general' ? 'gold' : 'primary'} size="sm">
-          {template.fields.length} حقول
-        </Badge>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h4 className="text-lg font-medium leading-7 text-[#016564]">
+            {template.title}
+          </h4>
+
+          {template.description ? (
+            <p className="mt-1 text-sm leading-6 text-gray-600">
+              {template.description}
+            </p>
+          ) : null}
+        </div>
+
+        <span className="shrink-0 rounded-full bg-[#f3eee4] px-2.5 py-1 text-xs text-[#b89a5e]">
+          {fieldsCount} حقول
+        </span>
       </div>
     </button>
   );
