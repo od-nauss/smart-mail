@@ -1,5 +1,5 @@
-import { ReactNode } from 'react';
-import { MessageGroup as MessageGroupType } from '@/lib/types';
+import type { ReactNode } from 'react';
+import type { MessageGroupType } from '@/lib/types';
 
 interface Props {
   group: MessageGroupType;
@@ -9,9 +9,7 @@ interface Props {
 
 export function MessageGroup({ group, children, className = '' }: Props) {
   return (
-    <section
-      className={`rounded-2xl border border-[#e7dfd2] bg-white p-4 sm:p-5 ${className}`}
-    >
+    <section className={`rounded-2xl border border-[#e7dfd2] bg-white p-4 sm:p-5 ${className}`}>
       <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#f1ece3] pb-3">
         <div>
           <h3 className="text-xl font-medium text-[#016564]">{group.title}</h3>
