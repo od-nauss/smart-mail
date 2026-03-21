@@ -165,6 +165,17 @@ const hospitalityItems: Array<{ key: HospitalityItemKey; label: string }> = [
   { key: 'vip', label: 'ضيافة VIP' },
 ];
 
+const hospitalityItemIcons: Record<HospitalityItemKey, string> = {
+  breakfast: '🥐',
+  saudiCoffee: '☕',
+  americanCoffee: '☕',
+  juices: '🧃',
+  hotDrinks: '🍵',
+  water: '💧',
+  healthy: '🍏',
+  vip: '⭐',
+};
+
 const securityOptions = [
   'تنظيم دخول المشاركين والزوار وفق القوائم المعتمدة.',
   'تسهيل الوصول إلى مبنى التدريب والقاعات المحددة.',
@@ -191,7 +202,7 @@ const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', '�
 const arabicWeekdays = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 const HEADER_CANDIDATES = {
-  title: ['اسم التدريب', 'اسم التدريب باللغة العربية', 'اسم الدورة باللغة العربية', 'اسم الدورة', 'عنوان الدورة', 'الدورة التدريبية', 'الدورة', 'البرنامج التدريبي', 'اسم البرنامج باللغة العربية', 'اسم البرنامج'],
+  title: ['اسم التدريب', 'اسم التدريب العربي', 'اسم التدريب باللغة العربية', 'اسم الدورة باللغة العربية', 'اسم الدورة', 'عنوان الدورة', 'الدورة التدريبية', 'الدورة', 'البرنامج التدريبي', 'اسم البرنامج باللغة العربية', 'اسم البرنامج'],
   period: ['الفترة', 'نوع الفترة', 'الفترة التدريبية'],
   participants: ['عدد المتدربين', 'عدد المشاركين', 'المشاركون', 'العدد المعتمد', 'العدد'],
   startDate: ['تاريخ البداية', 'تاريخ بدء التنفيذ', 'بداية التنفيذ', 'بداية الدورة', 'من', 'تاريخ البدء'],
@@ -380,7 +391,7 @@ function buildBreakSentence(firstStart: string, firstEnd: string, secondStart: s
   const segments = [];
   if (firstStart || firstEnd) segments.push(`• الاستراحة الأولى: ${formatBreakRange(firstStart, firstEnd)}`);
   if (secondStart || secondEnd) segments.push(`• الاستراحة الثانية: ${formatBreakRange(secondStart, secondEnd)}`);
-  return segments.length ? segments.join('\\n') : '• يتم التنسيق لاحقًا.';
+  return segments.length ? segments.join('\n') : '• يتم التنسيق لاحقًا.';
 }
 
 function smartComposeRequest(raw: string, context: 'hospitality' | 'security' | 'medical' | 'support') {
@@ -576,29 +587,55 @@ function parseSheetRows(rows: Record<string, unknown>[]) {
     .filter((item): item is CourseRecord => Boolean(item));
 }
 
+function findHeaderIndex(headerRow: unknown[], candidates: string[]) {
+  const normalized = headerRow.map((cell) => normalizeHeader(String(cell ?? '')));
+  for (const candidate of candidates) {
+    const idx = normalized.findIndex((value) => value === normalizeHeader(candidate));
+    if (idx >= 0) return idx;
+  }
+  for (const candidate of candidates) {
+    const idx = normalized.findIndex((value) => value.includes(normalizeHeader(candidate)));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
 function parseSheetFromAoa(rows: unknown[][]) {
   if (!rows.length) return [];
 
   const headerIndex = rows.findIndex((cells) => {
-    const joined = normalizeHeader((cells || []).map((cell) => String(cell ?? '')).join(' '));
-    return (
-      HEADER_CANDIDATES.title.some((candidate) => joined.includes(normalizeHeader(candidate))) &&
-      HEADER_CANDIDATES.startDate.some((candidate) => joined.includes(normalizeHeader(candidate))) &&
-      HEADER_CANDIDATES.endDate.some((candidate) => joined.includes(normalizeHeader(candidate)))
-    );
+    const titleIndex = findHeaderIndex(cells || [], HEADER_CANDIDATES.title);
+    const startIndex = findHeaderIndex(cells || [], HEADER_CANDIDATES.startDate);
+    const endIndex = findHeaderIndex(cells || [], HEADER_CANDIDATES.endDate);
+    return titleIndex >= 0 && startIndex >= 0 && endIndex >= 0;
   });
 
   if (headerIndex < 0) return [];
 
-  const headerRow = rows[headerIndex].map((cell) => String(cell ?? '').trim());
-  const objects = rows
+  const headerRow = rows[headerIndex] || [];
+  const titleIndex = findHeaderIndex(headerRow, HEADER_CANDIDATES.title);
+  const periodIndex = findHeaderIndex(headerRow, HEADER_CANDIDATES.period);
+  const participantsIndex = findHeaderIndex(headerRow, HEADER_CANDIDATES.participants);
+  const startIndex = findHeaderIndex(headerRow, HEADER_CANDIDATES.startDate);
+  const endIndex = findHeaderIndex(headerRow, HEADER_CANDIDATES.endDate);
+  const locationIndex = findHeaderIndex(headerRow, HEADER_CANDIDATES.location);
+
+  if (titleIndex < 0 || startIndex < 0 || endIndex < 0) return [];
+
+  return rows
     .slice(headerIndex + 1)
     .filter((cells) => (cells || []).some((cell) => String(cell ?? '').trim()))
     .map((cells) =>
-      Object.fromEntries(headerRow.map((header, index) => [header || `col_${index}`, cells[index] ?? '']))
-    );
-
-  return parseSheetRows(objects as Record<string, unknown>[]);
+      buildCourseRecord({
+        title: titleIndex >= 0 ? cells[titleIndex] : '',
+        period: periodIndex >= 0 ? cells[periodIndex] : '',
+        participants: participantsIndex >= 0 ? cells[participantsIndex] : '',
+        startDate: startIndex >= 0 ? cells[startIndex] : '',
+        endDate: endIndex >= 0 ? cells[endIndex] : '',
+        location: locationIndex >= 0 ? cells[locationIndex] : '',
+      }),
+    )
+    .filter((item): item is CourseRecord => Boolean(item));
 }
 
 function parseCourseLine(line: string): CourseRecord | null {
@@ -707,9 +744,10 @@ function parseRowsFromPastedText(text: string) {
 
 function stripLeadingSubjectRow(bodyHtml: string) {
   return String(bodyHtml || '')
-    .replace(/<tr>\s*<td[^>]*>\s*الموضوع:[\s\S]*?<\/td>\s*<\/tr>/gi, '')
+    .replace(/<tr>[\s\S]*?الموضوع:[\s\S]*?<\/tr>/i, '')
     .replace(/<div[^>]*class=["']subject["'][^>]*>[\s\S]*?<\/div>/gi, '')
-    .replace(/<p[^>]*>\s*الموضوع:[\s\S]*?<\/p>/gi, '');
+    .replace(/<p[^>]*>\s*الموضوع:[\s\S]*?<\/p>/gi, '')
+    .trim();
 }
 
 function buildWordDocumentHtml(subject: string, bodyHtml: string) {
@@ -757,7 +795,9 @@ function buildWordDocumentHtml(subject: string, bodyHtml: string) {
           font-weight: 700 !important;
         }
         tbody tr:nth-child(even) td { background: #f3f4f6 !important; }
-        p, div, span, li { font-size: 11pt !important; text-align: right !important; }
+        p, div, span, li { font-size: 11pt !important; text-align: right !important; font-weight: 400 !important; }
+        ul, ol { margin: 0; padding-right: 18px; }
+        .left-signature { text-align: left !important; }
       </style>
     </head>
     <body>
@@ -805,6 +845,7 @@ export default function HomePage() {
   const [archiveUnlocked, setArchiveUnlocked] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [importSummary, setImportSummary] = useState('');
+  const [importState, setImportState] = useState<'idle' | 'success' | 'error'>('idle');
   const previewRef = useRef<HTMLDivElement | null>(null);
   const posterRef = useRef<HTMLDivElement | null>(null);
   const [hospitalityRequests, setHospitalityRequests] = useState<HospitalityRequest[]>([createEmptyHospitalityRequest()]);
@@ -854,6 +895,7 @@ export default function HomePage() {
     setFileName('');
     setPastedText('');
     setImportSummary('');
+    setImportState('idle');
     setEditingIndex(null);
     setEnableMorningBreaks(true);
     setEnableEveningBreaks(false);
@@ -936,6 +978,7 @@ export default function HomePage() {
 
       if (!validRows.length) {
         setImportSummary('');
+        setImportState('error');
         setSystemNotice('تعذر قراءة ملف Excel الحالي. تأكد من أنه ملف LMS الأصلي ويحتوي على: اسم التدريب، الفترة، عدد المتدربين، تاريخ البدء، تاريخ الانتهاء، ومكان التنفيذ.');
         setFileName('');
         setFileInputKey((prev) => prev + 1);
@@ -945,6 +988,7 @@ export default function HomePage() {
       setCourses(validRows);
       setFileName(file.name);
       setImportSummary(`تم استيراد ${validRows.length} دورة من الملف: ${file.name}`);
+      setImportState('success');
       setFileInputKey((prev) => prev + 1);
       setPastedText('');
       setEditingIndex(null);
@@ -954,6 +998,7 @@ export default function HomePage() {
       setSystemNotice('تعذر قراءة ملف Excel الحالي.');
       setFileName('');
       setImportSummary('');
+      setImportState('error');
       setFileInputKey((prev) => prev + 1);
     }
   }
@@ -967,6 +1012,7 @@ export default function HomePage() {
     setCourses(rows);
     setFileName('');
     setImportSummary(`تم تحويل النص الذكي إلى ${rows.length} دورة.`);
+    setImportState('success');
     setStartDate(rows[0]?.startDate || '');
     setSystemNotice(`تم تحويل النص إلى ${rows.length} دورة.`);
   }
@@ -1029,12 +1075,14 @@ export default function HomePage() {
       .map((request) => {
         const lines = request.items.map((key) => {
           const label = hospitalityItems.find((item) => item.key === key)?.label || key;
+          const icon = hospitalityItemIcons[key] || '•';
           if (key === 'vip') {
-            return request.vipCount ? `ضيافة VIP لعدد ${request.vipCount} مشارك` : 'ضيافة VIP';
+            return request.vipCount ? `${icon} ضيافة VIP لعدد ${request.vipCount} مشارك` : `${icon} ضيافة VIP`;
           }
-          return label;
+          return `${icon} ${label}`;
         });
-        return [request.place, lines.map((line) => `• ${line}`).join('\n')] as [string, string];
+        return [request.place, lines.join('
+')] as [string, string];
       });
   }
 
@@ -1154,8 +1202,8 @@ export default function HomePage() {
               ${extra}
               <p style="margin:18px 0 0 0; text-align:right;">${closing}</p>
               <br />
-              <p style="margin:0; text-align:left;">فريق عمل إدارة عمليات التدريب</p>
-              <p style="margin:0; text-align:left;">وكالة الجامعة للتدريب</p>
+              <p class="left-signature" style="margin:0; text-align:left;">فريق عمل إدارة عمليات التدريب</p>
+              <p class="left-signature" style="margin:0; text-align:left;">وكالة الجامعة للتدريب</p>
             </td>
           </tr>
         </table>
@@ -1195,7 +1243,7 @@ export default function HomePage() {
 
   async function copyEmail() {
     if (!previewHtml) {
-      setSystemNotice('لا توجد معاينة قابلة للنسخ.');
+      setSystemNotice('اختر الإدارة وحدّث المعاينة أولًا.');
       return;
     }
     try {
@@ -1216,8 +1264,12 @@ export default function HomePage() {
   }
 
   function openDraft() {
+    if (!selectedDepartment) {
+      setSystemNotice('اختر الإدارة التي تريد أن ترسل لها الرسالة أولًا.');
+      return;
+    }
     if (!selectedDeptData || !previewHtml) {
-      setSystemNotice('أكمل المعاينة أولًا.');
+      setSystemNotice('أكمل البيانات ثم حدّث المعاينة أولًا.');
       return;
     }
     const url = `mailto:${encodeURIComponent(selectedDeptData.emailTo)}?subject=${encodeURIComponent(autoSubject)}&cc=${encodeURIComponent(cc)}&body=${encodeURIComponent(toPlainText(previewHtml))}`;
@@ -1316,8 +1368,12 @@ export default function HomePage() {
   }
 
   async function exportAsJpg() {
+    if (!selectedDepartment) {
+      setSystemNotice('اختر الإدارة التي تريد أن ترسل لها الرسالة أولًا.');
+      return;
+    }
     if (!posterRef.current || !previewHtml) {
-      setSystemNotice('أكمل المعاينة أولًا قبل التصدير.');
+      setSystemNotice('أكمل البيانات ثم حدّث المعاينة قبل التصدير.');
       return;
     }
 
@@ -1328,7 +1384,7 @@ export default function HomePage() {
         cacheBust: true,
         backgroundColor: '#f8f9f9',
         canvasWidth: 1400,
-        skipFonts: true,
+        
       });
 
       const link = document.createElement('a');
@@ -1343,8 +1399,12 @@ export default function HomePage() {
   }
 
   function exportAsWord() {
+    if (!selectedDepartment) {
+      setSystemNotice('اختر الإدارة التي تريد أن ترسل لها الرسالة أولًا.');
+      return;
+    }
     if (!previewHtml || !autoSubject) {
-      setSystemNotice('أكمل المعاينة أولًا قبل التصدير.');
+      setSystemNotice('أكمل البيانات ثم حدّث المعاينة قبل التصدير.');
       return;
     }
 
@@ -1445,9 +1505,6 @@ export default function HomePage() {
                 </button>
               </div>
 
-              {systemNotice ? (
-                <div className="mb-4 rounded-2xl border border-[#d0b284] bg-[#fbfaf7] px-4 py-3 text-sm font-medium text-[#6b5b35]">{systemNotice}</div>
-              ) : null}
 
               <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
                 {departments.map((dept) => {
@@ -1718,16 +1775,17 @@ export default function HomePage() {
                       <h2 className="text-lg font-semibold text-[#016564]">المعاينة</h2>
                       {selectedDeptData ? <div className="text-xs text-[#8c6968]">إلى: {selectedDeptData.emailTo}</div> : null}
                     </div>
-                    <div ref={previewRef} className="min-h-[600px] rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4" dangerouslySetInnerHTML={{ __html: previewHtml || '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة، حدّد تاريخ البداية، أضف الدورات، وستُحدَّث المعاينة تلقائيًا.</div>' }} />
+                    <div ref={previewRef} className="min-h-[600px] rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4" dangerouslySetInnerHTML={{ __html: previewHtml || '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة التي تريد الإرسال لها، ثم حدّد تاريخ البداية وأضف الدورات، وستُحدَّث المعاينة تلقائيًا.</div>' }} />
                     <div className="sr-only" aria-hidden>
                       <div
                         ref={posterRef}
                         style={{
                           width: '1400px',
-                          background: 'linear-gradient(180deg, #f7f8f7 0%, #ffffff 100%)',
+                          background: 'linear-gradient(135deg, #f7f8f7 0%, #ffffff 45%, #f8f6f1 100%)',
                           padding: '36px',
                           color: '#1f2937',
                           fontFamily: 'Cairo, Arial, sans-serif',
+                          fontWeight: 400,
                           position: 'relative',
                           overflow: 'hidden',
                           boxSizing: 'border-box',
@@ -1753,8 +1811,8 @@ export default function HomePage() {
                           }}
                         >
                           <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-                            <img src={EXPORT_POSTER_LOGO} alt="شعار جامعة نايف" style={{ width: '300px', height: 'auto', objectFit: 'contain', margin: '0 auto 18px auto', display: 'block' }} />
-                            <div style={{ color: '#016564', fontSize: '28px', fontWeight: 400 }}>
+                            <img src={EXPORT_POSTER_LOGO} alt="شعار جامعة نايف" style={{ width: '520px', maxWidth: '80%', height: 'auto', objectFit: 'contain', margin: '0 auto 24px auto', display: 'block' }} />
+                            <div style={{ color: '#016564', fontSize: '34px', fontWeight: 400 }}>
                               الموضوع: {autoSubject}
                             </div>
                           </div>
@@ -1777,14 +1835,17 @@ export default function HomePage() {
                               font-size: 18px !important;
                               line-height: 1.6 !important;
                               vertical-align: middle !important;
-                              text-align: center !important;
+                              text-align: right !important;
                               white-space: normal !important;
                               word-break: break-word !important;
+                              font-family: Cairo, Arial, sans-serif !important;
+                              font-weight: 400 !important;
                             }
                             .poster-html th {
                               background: #016564 !important;
                               color: #ffffff !important;
-                              font-weight: 800 !important;
+                              font-weight: 700 !important;
+                              text-align: center !important;
                             }
                             .poster-html tbody tr:nth-child(even) td {
                               background: #f3f4f6 !important;
@@ -1792,10 +1853,14 @@ export default function HomePage() {
                             .poster-html p,
                             .poster-html div,
                             .poster-html span {
-                              font-size: 18px !important;
-                              line-height: 1.85 !important;
+                              font-size: 22px !important;
+                              line-height: 1.95 !important;
                               text-align: right !important;
+                              font-family: Cairo, Arial, sans-serif !important;
+                              font-weight: 400 !important;
                             }
+                            .poster-html ul, .poster-html ol { margin: 0; padding-right: 22px; }
+                            .poster-html .left-signature { text-align: left !important; }
                           `}</style>
 
                           <div className="poster-html" dangerouslySetInnerHTML={{ __html: stripLeadingSubjectRow(previewHtml || '') }} />
@@ -1872,6 +1937,12 @@ export default function HomePage() {
               </div>
             )}
           </div>
+        </div>
+      ) : null}
+
+      {systemNotice ? (
+        <div className="fixed bottom-5 left-5 z-[80] max-w-sm rounded-2xl border border-[#d0b284] bg-white/95 px-4 py-3 text-sm font-medium text-[#6b5b35] shadow-xl backdrop-blur">
+          {systemNotice}
         </div>
       ) : null}
 
