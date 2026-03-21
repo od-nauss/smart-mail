@@ -1081,8 +1081,7 @@ export default function HomePage() {
           }
           return `${icon} ${label}`;
         });
-        return [request.place, lines.join('
-')] as [string, string];
+        return [request.place, lines.join('\n')] as [string, string];
       });
   }
 
