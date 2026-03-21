@@ -447,13 +447,20 @@ function normalizeLocation(value: string) {
   return found || raw;
 }
 
-function buildCourseRecord(input: Partial<CourseRecord>): CourseRecord | null {
-  const title = String(input.title || '').trim();
-  const period = normalizePeriod(String(input.period || '').trim());
-  const participants = normalizeArabicDigits(String(input.participants || '').trim()).replace(/[^\d]/g, '');
+function buildCourseRecord(input: {
+  title?: unknown;
+  period?: unknown;
+  participants?: unknown;
+  startDate?: unknown;
+  endDate?: unknown;
+  location?: unknown;
+}): CourseRecord | null {
+  const title = String(input.title ?? '').trim();
+  const period = normalizePeriod(String(input.period ?? '').trim());
+  const participants = normalizeArabicDigits(String(input.participants ?? '').trim()).replace(/[^\d]/g, '');
   const startDate = parseExcelDateValue(input.startDate);
   const endDate = parseExcelDateValue(input.endDate);
-  const location = normalizeLocation(String(input.location || '').trim());
+  const location = normalizeLocation(String(input.location ?? '').trim());
 
   if (!title || !period || !participants || !startDate || !endDate || !location) return null;
 
