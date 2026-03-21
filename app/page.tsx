@@ -706,13 +706,15 @@ function parseCourseLine(line: string): CourseRecord | null {
 
 function parseStructuredPastedRows(text: string) {
   const lines = text
-    .split(/
-?
-/)
-    .map((line) => line.replace(/ /g, ''))
-    .filter((line) => line.trim());
+  .split(/\r?\n/)
+  function parseStructuredPastedRows(text: string) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\u00A0/g, ' ').trim())
+    .filter(Boolean);
 
-  if (!lines.length || !lines.some((line) => line.includes('	'))) return [];
+  return lines;
+}
 
   const rows = lines.map((line) => line.split('	').map((cell) => cell.trim()));
   const headerIndex = rows.findIndex((cells) => {
