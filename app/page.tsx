@@ -868,7 +868,7 @@ function buildDraftHtmlDocument(subject: string, bodyHtml: string) {
 
 function buildOutlookDraftEml(to: string, cc: string, subject: string, bodyHtml: string) {
   const htmlDocument = buildDraftHtmlDocument(subject, bodyHtml);
-  const plainText = htmlToPlainText(stripLeadingSubjectRow(bodyHtml));
+  const plainText = toPlainText(stripLeadingSubjectRow(bodyHtml));
 
   const encodeBase64Utf8 = (value: string) => {
     if (typeof window !== 'undefined') {
