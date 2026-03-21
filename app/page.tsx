@@ -752,29 +752,42 @@ export default function HomePage() {
                     </div>
 
                     {module.key === 'weekly' ? (
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-[#e7dcc7] bg-[#fbfaf7] p-3">
                         <button
                           type="button"
                           onClick={() => setWeeklyView('form')}
-                          className="rounded-2xl border border-[#d0b284] bg-[#f8f9f9] px-4 py-4 text-right transition hover:border-[#016564] hover:bg-white"
+                          className="group flex w-full items-center justify-between rounded-2xl border border-[#d0b284] bg-white px-5 py-5 text-right transition hover:border-[#016564] hover:shadow-sm"
                         >
-                          <div className="mb-1 text-xl">📅</div>
-                          <div className="text-sm font-semibold text-[#016564]">
-                            تنفيذ الدورات التدريبية
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#016564]/10 text-2xl">
+                              📅
+                            </div>
+
+                            <div>
+                              <div className="text-base font-semibold text-[#016564]">
+                                تنفيذ الدورات التدريبية
+                              </div>
+                              <div className="mt-1 text-sm text-[#8c6968]">
+                                نموذج أسبوعي موحد لتبليغ الإدارات المعنية
+                              </div>
+                            </div>
                           </div>
-                          <div className="mt-1 text-xs text-[#8c6968]">
-                            نموذج أسبوعي موحد لتبليغ الإدارات المعنية
+
+                          <div className="text-[#d0b284] transition group-hover:translate-x-[-4px]">
+                            <svg
+                              className="h-6 w-6"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            >
+                              <path d="M9 6l6 6-6 6" />
+                            </svg>
                           </div>
                         </button>
 
-                        <div className="rounded-2xl border border-dashed border-[#d6d7d4] bg-[#fcfdfd] px-4 py-4 text-right">
-                          <div className="mb-1 text-xl">🗂️</div>
-                          <div className="text-sm font-semibold text-[#8c6968]">
-                            قوالب أسبوعية أخرى
-                          </div>
-                          <div className="mt-1 text-xs text-[#98aaaa]">
-                            ستُضاف لاحقًا
-                          </div>
+                        <div className="mt-3 rounded-2xl border border-dashed border-[#d8dfdf] bg-white/70 px-4 py-3 text-sm text-[#8c6968]">
+                          يشمل التبليغ الأسبوعي للإدارات المرتبطة بتنفيذ الدورات داخل الجامعة.
                         </div>
                       </div>
                     ) : (
