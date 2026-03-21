@@ -302,24 +302,27 @@ function parseExcelDateValue(value: unknown) {
   return '';
 }
 
-function countWorkingDays(start: string, end: string) {
+function countWorkingDays(start: string, end: string, location?: string) {
   if (!start || !end) return 0;
   const startDate = createLocalDate(start);
   const endDate = createLocalDate(end);
   if (!startDate || !endDate || startDate > endDate) return 0;
 
+  const isExternal = normalizeLocation(String(location || '').trim()) === 'خارجي';
+  const weekendDays = isExternal ? new Set([0, 6]) : new Set([5, 6]);
+
   let count = 0;
   const current = new Date(startDate);
   while (current <= endDate) {
     const day = current.getDay();
-    if (day !== 5 && day !== 6) count += 1;
+    if (!weekendDays.has(day)) count += 1;
     current.setDate(current.getDate() + 1);
   }
   return count;
 }
 
-function buildDurationText(start: string, end: string) {
-  const days = countWorkingDays(start, end);
+function buildDurationText(start: string, end: string, location?: string) {
+  const days = countWorkingDays(start, end, location);
   if (!days) return '';
   if (days === 1) return 'يوم واحد';
   if (days === 2) return 'يومان';
@@ -438,7 +441,7 @@ function buildCoursesTable(courses: CourseRecord[]) {
                 <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(item.title)}</td>
                 <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(item.period)}</td>
                 <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(item.participants)}</td>
-                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(buildDurationText(item.startDate, item.endDate))}</td>
+                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(buildDurationText(item.startDate, item.endDate, item.location))}</td>
                 <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(formatCourseDateRange(item.startDate, item.endDate))}</td>
                 <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(item.location)}</td>
               </tr>
@@ -772,6 +775,199 @@ function buildWordDocumentHtml(subject: string, bodyHtml: string) {
     </head>
     <body>
       <div class="page-shell">${cleanedBody}</div>
+    </body>
+  </html>
+  `;
+}
+
+function buildDraftWindowHtml(to: string, cc: string, subject: string, bodyHtml: string) {
+  const cleanedBody = stripLeadingSubjectRow(bodyHtml).replace(/text-align:center/gi, 'text-align:right');
+  const safeTo = escapeHtml(to);
+  const safeCc = escapeHtml(cc || '—');
+  const safeSubject = escapeHtml(subject);
+
+  return `
+  <!DOCTYPE html>
+  <html dir="rtl" lang="ar">
+    <head>
+      <meta charset="utf-8" />
+      <title>${safeSubject}</title>
+      <style>
+        body {
+          direction: rtl;
+          font-family: Cairo, Arial, sans-serif;
+          margin: 0;
+          background: #f5f7f7;
+          color: #1f2937;
+        }
+        .shell {
+          max-width: 1100px;
+          margin: 24px auto;
+          padding: 20px;
+        }
+        .toolbar {
+          background: #ffffff;
+          border: 1px solid #d6d7d4;
+          border-radius: 20px;
+          padding: 18px;
+          box-shadow: 0 14px 30px rgba(1,101,100,0.08);
+          margin-bottom: 18px;
+        }
+        .meta-grid {
+          display: grid;
+          grid-template-columns: 140px 1fr;
+          gap: 10px 14px;
+          align-items: start;
+          margin-bottom: 14px;
+        }
+        .meta-label {
+          color: #016564;
+          font-weight: 700;
+        }
+        .meta-value {
+          background: #f8f9f9;
+          border: 1px solid #e4e7e7;
+          border-radius: 12px;
+          padding: 10px 12px;
+          word-break: break-word;
+        }
+        .actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        button {
+          border: none;
+          border-radius: 12px;
+          padding: 11px 16px;
+          font-family: inherit;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        .primary {
+          background: #016564;
+          color: #fff;
+        }
+        .secondary {
+          background: #fff;
+          color: #016564;
+          border: 1px solid #d0b284;
+        }
+        .hint {
+          margin-top: 12px;
+          font-size: 13px;
+          color: #8c6968;
+        }
+        .mail-body {
+          background: #ffffff;
+          border: 1px solid #d6d7d4;
+          border-radius: 24px;
+          padding: 26px;
+          box-shadow: 0 18px 38px rgba(1,101,100,0.08);
+        }
+        .mail-body * {
+          font-family: Cairo, Arial, sans-serif !important;
+        }
+        .mail-body table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          table-layout: fixed !important;
+          margin: 10px 0 12px 0 !important;
+        }
+        .mail-body th, .mail-body td {
+          border: 1px solid #d6d7d4 !important;
+          padding: 7px 9px !important;
+          font-size: 14px !important;
+          line-height: 1.75 !important;
+          vertical-align: top !important;
+          white-space: normal !important;
+          word-break: break-word !important;
+        }
+        .mail-body th {
+          background: #016564 !important;
+          color: #ffffff !important;
+          font-weight: 700 !important;
+          text-align: center !important;
+        }
+        .mail-body tbody tr:nth-child(even) td {
+          background: #f3f4f6 !important;
+        }
+        .mail-body p, .mail-body div, .mail-body span, .mail-body li {
+          text-align: right !important;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="shell">
+        <div class="toolbar">
+          <div class="meta-grid">
+            <div class="meta-label">إلى</div>
+            <div class="meta-value">${safeTo}</div>
+            <div class="meta-label">نسخة</div>
+            <div class="meta-value">${safeCc}</div>
+            <div class="meta-label">الموضوع</div>
+            <div class="meta-value">${safeSubject}</div>
+          </div>
+          <div class="actions">
+            <button class="primary" onclick="copyFormatted()">نسخ المحتوى المنسق</button>
+            <button class="secondary" onclick="copyPlain()">نسخ كنص عادي</button>
+          </div>
+          <div class="hint">افتح Outlook وأنشئ رسالة جديدة، ثم الصق المحتوى المنسق داخل جسم الرسالة. هذه الطريقة أدق من mailto النصي لأنها تحافظ على الجداول والتنسيق بدرجة أعلى.</div>
+        </div>
+
+        <div id="mail-content" class="mail-body">${cleanedBody}</div>
+      </div>
+
+      <script>
+        function htmlToPlain(html) {
+          return html
+            .replace(/<br\s*\/?/gi, '<br>')
+            .replace(/<\/tr>/gi, '\n')
+            .replace(/<\/(td|th)>/gi, '\t')
+            .replace(/<[^>]*>/g, '')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/\t{2,}/g, '\t')
+            .trim();
+        }
+
+        async function copyFormatted() {
+          const node = document.getElementById('mail-content');
+          const html = node.innerHTML;
+          const plain = htmlToPlain(html);
+
+          try {
+            if (navigator.clipboard && window.ClipboardItem) {
+              const item = new ClipboardItem({
+                'text/html': new Blob([html], { type: 'text/html' }),
+                'text/plain': new Blob([plain], { type: 'text/plain' })
+              });
+              await navigator.clipboard.write([item]);
+              alert('تم نسخ المحتوى المنسق بنجاح.');
+              return;
+            }
+          } catch (e) {}
+
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          document.execCommand('copy');
+          selection.removeAllRanges();
+          alert('تم نسخ المحتوى المنسق بنجاح.');
+        }
+
+        async function copyPlain() {
+          const node = document.getElementById('mail-content');
+          const plain = htmlToPlain(node.innerHTML);
+          try {
+            await navigator.clipboard.writeText(plain);
+            alert('تم نسخ النص العادي.');
+          } catch (e) {
+            alert('تعذر نسخ النص حاليًا.');
+          }
+        }
+      </script>
     </body>
   </html>
   `;
@@ -1226,12 +1422,26 @@ export default function HomePage() {
   }
 
   function openDraft() {
-    if (!selectedDeptData || !previewHtml) {
-      setSystemNotice('أكمل المعاينة أولًا.');
+    if (!selectedDepartment || !selectedDeptData) {
+      setSystemNotice('اختر الإدارة التي تريد أن ترسل لها الرسالة أولًا.');
       return;
     }
-    const url = `mailto:${encodeURIComponent(selectedDeptData.emailTo)}?subject=${encodeURIComponent(autoSubject)}&cc=${encodeURIComponent(cc)}&body=${encodeURIComponent(toPlainText(previewHtml))}`;
-    window.location.href = url;
+
+    if (!previewHtml) {
+      setSystemNotice('أكمل بيانات الرسالة أولًا حتى يتم إنشاء النسخة البريدية المنسقة.');
+      return;
+    }
+
+    const draftWindow = window.open('', '_blank', 'noopener,noreferrer,width=1280,height=900');
+    if (!draftWindow) {
+      setSystemNotice('تعذر فتح النسخة البريدية المنسقة. تأكد من السماح بالنوافذ المنبثقة.');
+      return;
+    }
+
+    draftWindow.document.open();
+    draftWindow.document.write(buildDraftWindowHtml(selectedDeptData.emailTo, cc, autoSubject, previewHtml));
+    draftWindow.document.close();
+    draftWindow.focus();
   }
 
   function saveToArchive() {
