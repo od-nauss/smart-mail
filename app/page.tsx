@@ -8,6 +8,8 @@ import { Footer } from '@/components/layout/Footer';
 type HomeModuleKey = 'weekly' | 'operational' | 'leadership' | 'general';
 type DepartmentKey = 'hospitality' | 'security' | 'medical' | 'support';
 type WeeklyView = 'home' | 'form';
+type InputMode = 'excel' | 'manual' | 'paste';
+type BreakPeriod = 'صباحية' | 'مسائية';
 
 type CourseRecord = {
   title: string;
@@ -16,6 +18,13 @@ type CourseRecord = {
   startDate: string;
   endDate: string;
   location: string;
+};
+
+type HospitalityRequest = {
+  id: string;
+  place: string;
+  items: string[];
+  vipCount: string;
 };
 
 const homeModules: Array<{
@@ -89,6 +98,7 @@ const locations = [
 const hospitalityPlaces = [
   'صالة الاستقبال (مبنى التدريب)',
   'اللاونج الطابق الرابع',
+  'داخل قاعة التدريب',
   'النادي الرياضي',
 ];
 
@@ -99,8 +109,8 @@ const hospitalityItems = [
   'العصائر',
   'المشروبات الساخنة',
   'المياه المعدنية',
-  'شاي متنوع',
-  'حلويات خفيفة',
+  'ضيافة صحية لمرضى الضغط والسكر',
+  'ضيافة VIP',
 ];
 
 const securityOptions = [
@@ -123,6 +133,8 @@ const supportOptions = [
   'تفقد دورات المياه',
   'متابعة النفايات وإزالتها',
   'تنسيق الطاولات والكراسي',
+  'نظافة مداخل المبنى',
+  'نظافة النوافير',
   'أخرى',
 ];
 
@@ -130,6 +142,7 @@ const excelTemplateHeaders = [
   'عنوان الدورة',
   'نوع الفترة',
   'عدد المشاركين',
+  'مدة البرنامج',
   'تاريخ البداية',
   'تاريخ النهاية',
   'الموقع',
@@ -160,6 +173,26 @@ const arabicWeekdays = [
   'السبت',
 ];
 
+const periodAliases: Record<string, string> = {
+  صباحي: 'صباحية',
+  صباحية: 'صباحية',
+  morning: 'صباحية',
+  am: 'صباحية',
+  مسائي: 'مسائية',
+  مسائية: 'مسائية',
+  evening: 'مسائية',
+  pm: 'مسائية',
+};
+
+const headerAliases = {
+  title: ['عنوان الدورة', 'اسم الدورة', 'الدورة', 'program title', 'course title', 'course name', 'title'],
+  period: ['نوع الفترة', 'الفترة', 'period', 'session', 'time period'],
+  participants: ['عدد المشاركين', 'المشاركين', 'عدد المتدربين', 'participants', 'trainees', 'count'],
+  startDate: ['تاريخ البداية', 'بداية الدورة', 'من', 'start date', 'start', 'from'],
+  endDate: ['تاريخ النهاية', 'نهاية الدورة', 'إلى', 'end date', 'end', 'to'],
+  location: ['الموقع', 'مقر التنفيذ', 'القاعة', 'location', 'venue', 'site', 'room'],
+};
+
 function pad2(value: number) {
   return String(value).padStart(2, '0');
 }
@@ -168,7 +201,6 @@ function getWeekLabelFromDate(dateStr: string) {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return '';
-
   const weekNumber = Math.ceil(date.getDate() / 7);
   const weekText = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس'][weekNumber - 1] || String(weekNumber);
   const month = arabicMonths[date.getMonth()];
@@ -198,7 +230,7 @@ function formatDisplayDate(dateStr: string) {
 function formatCourseDateRange(start: string, end: string) {
   if (!start && !end) return '';
   if (start && !end) return formatDisplayDate(start);
-  if (!start && !end) return '';
+  if (!start && end) return formatDisplayDate(end);
   if (start === end) return formatDisplayDate(start);
   return `${formatDisplayDate(start)} - ${formatDisplayDate(end)}`;
 }
@@ -254,7 +286,11 @@ function toPlainText(html: string) {
 }
 
 function normalizeHeader(value: string) {
-  return String(value).replace(/\s+/g, '').trim();
+  return String(value)
+    .toLowerCase()
+    .replace(/[\u200f\u200e]/g, '')
+    .replace(/[\s_\-\/\\]+/g, '')
+    .trim();
 }
 
 function findHeader(row: Record<string, unknown>, candidates: string[]) {
@@ -267,47 +303,176 @@ function findHeader(row: Record<string, unknown>, candidates: string[]) {
   return '';
 }
 
+function excelSerialToDate(value: number) {
+  const utcDays = Math.floor(value - 25569);
+  const utcValue = utcDays * 86400;
+  const dateInfo = new Date(utcValue * 1000);
+  return `${dateInfo.getUTCFullYear()}-${pad2(dateInfo.getUTCMonth() + 1)}-${pad2(dateInfo.getUTCDate())}`;
+}
+
+function parseDateValue(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return excelSerialToDate(value);
+  }
+
+  const raw = String(value).trim();
+  if (!raw) return '';
+
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(raw)) {
+    const [year, month, day] = raw.split('-');
+    return `${year}-${pad2(Number(month))}-${pad2(Number(day))}`;
+  }
+
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(raw)) {
+    const [day, month, year] = raw.split('/');
+    return `${year}-${pad2(Number(month))}-${pad2(Number(day))}`;
+  }
+
+  if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(raw)) {
+    const [day, month, year] = raw.split('-');
+    return `${year}-${pad2(Number(month))}-${pad2(Number(day))}`;
+  }
+
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    return `${parsed.getFullYear()}-${pad2(parsed.getMonth() + 1)}-${pad2(parsed.getDate())}`;
+  }
+
+  return '';
+}
+
+function normalizePeriod(value: unknown) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const key = raw.toLowerCase();
+  return periodAliases[key] || raw;
+}
+
+function normalizeLocation(value: unknown) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const matched = locations.find((item) => normalizeHeader(item) === normalizeHeader(raw));
+  return matched || raw;
+}
+
+function sanitizeParticipants(value: unknown) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const digits = raw.replace(/[^0-9]/g, '');
+  return digits || raw;
+}
+
+function sanitizeCourseRecord(record: Partial<CourseRecord>): CourseRecord | null {
+  const title = String(record.title ?? '').trim();
+  const period = normalizePeriod(record.period);
+  const participants = sanitizeParticipants(record.participants);
+  const startDate = parseDateValue(record.startDate);
+  const endDate = parseDateValue(record.endDate);
+  const location = normalizeLocation(record.location);
+
+  const nonEmptyCount = [title, period, participants, startDate, endDate, location].filter(Boolean).length;
+  if (nonEmptyCount < 2) return null;
+
+  return {
+    title,
+    period,
+    participants,
+    startDate,
+    endDate,
+    location,
+  };
+}
+
+function mapRowToCourse(row: Record<string, unknown>) {
+  const titleKey = findHeader(row, headerAliases.title);
+  const periodKey = findHeader(row, headerAliases.period);
+  const participantsKey = findHeader(row, headerAliases.participants);
+  const startKey = findHeader(row, headerAliases.startDate);
+  const endKey = findHeader(row, headerAliases.endDate);
+  const locationKey = findHeader(row, headerAliases.location);
+
+  return sanitizeCourseRecord({
+    title: String(row[titleKey] ?? ''),
+    period: String(row[periodKey] ?? ''),
+    participants: String(row[participantsKey] ?? ''),
+    startDate: String(row[startKey] ?? ''),
+    endDate: String(row[endKey] ?? ''),
+    location: String(row[locationKey] ?? ''),
+  });
+}
+
 function parseRowsFromPastedText(text: string) {
   const lines = text
-    .split('\n')
+    .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
 
+  if (!lines.length) return [] as CourseRecord[];
+
+  const splitLine = (line: string) => {
+    if (line.includes('\t')) return line.split('\t').map((item) => item.trim());
+    if (line.includes('|')) return line.split('|').map((item) => item.trim());
+    return line.split(',').map((item) => item.trim());
+  };
+
+  const headerCells = splitLine(lines[0]);
+  const headerMap: Record<string, number> = {};
+
+  headerCells.forEach((cell, index) => {
+    const normalized = normalizeHeader(cell);
+    if (headerAliases.title.some((alias) => normalizeHeader(alias) === normalized)) headerMap.title = index;
+    if (headerAliases.period.some((alias) => normalizeHeader(alias) === normalized)) headerMap.period = index;
+    if (headerAliases.participants.some((alias) => normalizeHeader(alias) === normalized)) headerMap.participants = index;
+    if (headerAliases.startDate.some((alias) => normalizeHeader(alias) === normalized)) headerMap.startDate = index;
+    if (headerAliases.endDate.some((alias) => normalizeHeader(alias) === normalized)) headerMap.endDate = index;
+    if (headerAliases.location.some((alias) => normalizeHeader(alias) === normalized)) headerMap.location = index;
+  });
+
+  const hasHeaderMap = Object.keys(headerMap).length >= 3;
+  const dataLines = hasHeaderMap ? lines.slice(1) : lines;
+
   const rows: CourseRecord[] = [];
 
-  for (const line of lines) {
-    const parts = line.includes('\t')
-      ? line.split('\t')
-      : line.includes('|')
-        ? line.split('|')
-        : line.split(',');
+  for (const line of dataLines) {
+    const parts = splitLine(line);
+    if (parts.length < 2) continue;
 
-    if (parts.length < 6) continue;
+    const record = hasHeaderMap
+      ? sanitizeCourseRecord({
+          title: parts[headerMap.title ?? -1] ?? '',
+          period: parts[headerMap.period ?? -1] ?? '',
+          participants: parts[headerMap.participants ?? -1] ?? '',
+          startDate: parts[headerMap.startDate ?? -1] ?? '',
+          endDate: parts[headerMap.endDate ?? -1] ?? '',
+          location: parts[headerMap.location ?? -1] ?? '',
+        })
+      : sanitizeCourseRecord({
+          title: parts[0] ?? '',
+          period: parts[1] ?? '',
+          participants: parts[2] ?? '',
+          startDate: parts[3] ?? '',
+          endDate: parts[4] ?? '',
+          location: parts[5] ?? '',
+        });
 
-    rows.push({
-      title: String(parts[0] || '').trim(),
-      period: String(parts[1] || '').trim(),
-      participants: String(parts[2] || '').trim(),
-      startDate: String(parts[3] || '').trim(),
-      endDate: String(parts[4] || '').trim(),
-      location: String(parts[5] || '').trim(),
-    });
+    if (record) rows.push(record);
   }
 
-  return rows;
+  return rows.filter((item) => item.title || item.startDate || item.location);
 }
 
 function buildCoursesTable(courses: CourseRecord[]) {
   const totalParticipants = courses.reduce((sum, item) => sum + Number(item.participants || 0), 0);
 
   return `
-    <table dir="rtl" style="width:100%; border-collapse:collapse; margin-top:12px; font-family:Cairo, Arial, sans-serif; font-size:14px;">
+    <table dir="rtl" border="1" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; margin-top:12px; font-family:Cairo, Arial, sans-serif; font-size:14px; border:1px solid #d6d7d4;">
       <thead>
         <tr style="background:#016564; color:#ffffff;">
           <th style="border:1px solid #d6d7d4; padding:10px;">عنوان الدورة</th>
           <th style="border:1px solid #d6d7d4; padding:10px;">نوع الفترة</th>
           <th style="border:1px solid #d6d7d4; padding:10px;">عدد المشاركين</th>
-          <th style="border:1px solid #d6d7d4; padding:10px;">مدة البرامج</th>
+          <th style="border:1px solid #d6d7d4; padding:10px;">مدة البرنامج</th>
           <th style="border:1px solid #d6d7d4; padding:10px;">التاريخ</th>
           <th style="border:1px solid #d6d7d4; padding:10px;">الموقع</th>
         </tr>
@@ -344,10 +509,10 @@ function buildSimpleTable(title: string, headers: [string, string], rows: Array<
   return `
     <div style="margin-top:16px;">
       <div style="font-weight:700; color:#016564; margin-bottom:8px;">${escapeHtml(title)}</div>
-      <table dir="rtl" style="width:100%; border-collapse:collapse; font-family:Cairo, Arial, sans-serif; font-size:14px;">
+      <table dir="rtl" border="1" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-family:Cairo, Arial, sans-serif; font-size:14px; border:1px solid #d6d7d4;">
         <thead>
-          <tr style="background:#016564; color:#ffffff;">
-            <th style="border:1px solid #d6d7d4; padding:10px;">${escapeHtml(headers[0])}</th>
+          <tr style="background:#eef5f5;">
+            <th style="border:1px solid #d6d7d4; padding:10px; width:32%;">${escapeHtml(headers[0])}</th>
             <th style="border:1px solid #d6d7d4; padding:10px;">${escapeHtml(headers[1])}</th>
           </tr>
         </thead>
@@ -368,18 +533,57 @@ function buildSimpleTable(title: string, headers: [string, string], rows: Array<
   `;
 }
 
+function formatTimeWithMeridiem(value: string) {
+  if (!value) return '';
+  const [hourStr, minuteStr] = value.split(':');
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return value;
+  const suffix = hour >= 12 ? 'م' : 'ص';
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${pad2(displayHour)}:${pad2(minute)} ${suffix}`;
+}
+
+function buildBreakRange(start: string, end: string) {
+  if (!start && !end) return '';
+  if (start && !end) return formatTimeWithMeridiem(start);
+  if (!start && end) return formatTimeWithMeridiem(end);
+  return `من ${formatTimeWithMeridiem(start)} إلى ${formatTimeWithMeridiem(end)}`;
+}
+
+function createHospitalityRequest(): HospitalityRequest {
+  return {
+    id: `hr-${Math.random().toString(36).slice(2, 9)}`,
+    place: hospitalityPlaces[0],
+    items: [],
+    vipCount: '',
+  };
+}
+
+function buildWordCompatibleHtml(content: string) {
+  return `
+    <html>
+      <head>
+        <meta charset="utf-8" />
+      </head>
+      <body dir="rtl" style="margin:0; padding:0; font-family:Cairo, Arial, sans-serif;">
+        ${content}
+      </body>
+    </html>
+  `;
+}
+
 export default function HomePage() {
   const [weeklyView, setWeeklyView] = useState<WeeklyView>('home');
-  const [selectedDepartment, setSelectedDepartment] = useState<DepartmentKey | null>(null);
+  const [selectedDepartment, setSelectedDepartment] = useState<DepartmentKey>('hospitality');
 
   const [cc, setCc] = useState('');
   const [startDate, setStartDate] = useState('');
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [fileName, setFileName] = useState('');
-  const [inputMode, setInputMode] = useState<'excel' | 'manual' | 'paste'>('excel');
+  const [inputMode, setInputMode] = useState<InputMode>('excel');
   const [pastedText, setPastedText] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [previewHtml, setPreviewHtml] = useState('');
 
   const [courseForm, setCourseForm] = useState<CourseRecord>({
     title: '',
@@ -390,20 +594,17 @@ export default function HomePage() {
     location: locations[0],
   });
 
-  const [morningBreak1, setMorningBreak1] = useState('من 09:45 ص إلى 10:15 ص');
-  const [morningBreak2, setMorningBreak2] = useState('من 11:45 ص إلى 12:15 م');
-  const [eveningBreak1, setEveningBreak1] = useState('من 17:00 م إلى 17:10 م');
-  const [eveningBreak2, setEveningBreak2] = useState('من 18:10 م إلى 18:25 م');
-  const [eveningBreak3, setEveningBreak3] = useState('من 19:15 م إلى 19:25 م');
-
-  const [selectedHospitalityPlaces, setSelectedHospitalityPlaces] = useState<string[]>([]);
-  const [selectedHospitalityItems, setSelectedHospitalityItems] = useState<string[]>([]);
+  const [hospitalityBreakPeriod, setHospitalityBreakPeriod] = useState<BreakPeriod>('صباحية');
+  const [break1Start, setBreak1Start] = useState('09:45');
+  const [break1End, setBreak1End] = useState('10:15');
+  const [break2Start, setBreak2Start] = useState('11:45');
+  const [break2End, setBreak2End] = useState('12:15');
+  const [hospitalityRequests, setHospitalityRequests] = useState<HospitalityRequest[]>([createHospitalityRequest()]);
   const [hospitalityExtra, setHospitalityExtra] = useState('');
 
   const [securitySelections, setSecuritySelections] = useState<string[]>([]);
   const [securityOther, setSecurityOther] = useState('');
   const [securityGate, setSecurityGate] = useState('4');
-  const [attachmentsRequired, setAttachmentsRequired] = useState(true);
 
   const [medicalExtra, setMedicalExtra] = useState('');
   const [supportSelections, setSupportSelections] = useState<string[]>([]);
@@ -418,14 +619,6 @@ export default function HomePage() {
   const weekLabel = useMemo(() => getWeekLabelFromDate(startDate), [startDate]);
   const formattedStartDate = useMemo(() => getFormattedStartDate(startDate), [startDate]);
 
-  function toggleMultiValue(value: string, current: string[], setCurrent: (items: string[]) => void) {
-    if (current.includes(value)) {
-      setCurrent(current.filter((item) => item !== value));
-    } else {
-      setCurrent([...current, value]);
-    }
-  }
-
   function resetCourseForm() {
     setCourseForm({
       title: '',
@@ -439,15 +632,16 @@ export default function HomePage() {
   }
 
   function saveManualCourse() {
-    if (!courseForm.title || !courseForm.participants || !courseForm.startDate || !courseForm.endDate || !courseForm.location) {
+    const sanitized = sanitizeCourseRecord(courseForm);
+    if (!sanitized?.title || !sanitized.participants || !sanitized.startDate || !sanitized.endDate || !sanitized.location) {
       alert('أكمل بيانات الدورة');
       return;
     }
 
     if (editingIndex === null) {
-      setCourses((prev) => [...prev, courseForm]);
+      setCourses((prev) => [...prev, sanitized]);
     } else {
-      setCourses((prev) => prev.map((item, index) => (index === editingIndex ? courseForm : item)));
+      setCourses((prev) => prev.map((item, index) => (index === editingIndex ? sanitized : item)));
     }
 
     resetCourseForm();
@@ -467,7 +661,7 @@ export default function HomePage() {
   async function handleExcelUpload(file: File) {
     try {
       const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array' });
+      const workbook = XLSX.read(buffer, { type: 'array', cellDates: false });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: '' });
 
@@ -476,26 +670,9 @@ export default function HomePage() {
         return;
       }
 
-      const normalizedRows: CourseRecord[] = rows.map((row) => {
-        const titleKey = findHeader(row, ['عنوان الدورة', 'اسم الدورة', 'الدورة']);
-        const periodKey = findHeader(row, ['نوع الفترة', 'الفترة']);
-        const participantsKey = findHeader(row, ['عدد المشاركين', 'المشاركين']);
-        const startKey = findHeader(row, ['تاريخ البداية', 'بداية الدورة', 'من']);
-        const endKey = findHeader(row, ['تاريخ النهاية', 'نهاية الدورة', 'إلى']);
-        const locationKey = findHeader(row, ['الموقع', 'مقر التنفيذ']);
-
-        return {
-          title: String(row[titleKey] ?? '').trim(),
-          period: String(row[periodKey] ?? '').trim(),
-          participants: String(row[participantsKey] ?? '').trim(),
-          startDate: String(row[startKey] ?? '').trim(),
-          endDate: String(row[endKey] ?? '').trim(),
-          location: String(row[locationKey] ?? '').trim(),
-        };
-      });
-
-      const validRows = normalizedRows.filter(
-        (item) => item.title && item.period && item.participants && item.startDate && item.endDate && item.location
+      const parsedRows = rows.map(mapRowToCourse).filter(Boolean) as CourseRecord[];
+      const validRows = parsedRows.filter(
+        (item) => item.title || item.period || item.participants || item.startDate || item.endDate || item.location
       );
 
       if (!validRows.length) {
@@ -505,6 +682,7 @@ export default function HomePage() {
 
       setCourses(validRows);
       setFileName(file.name);
+      alert(`تم استيراد ${validRows.length} دورة`);
     } catch {
       alert('تعذر قراءة ملف Excel');
     }
@@ -517,28 +695,100 @@ export default function HomePage() {
       return;
     }
     setCourses(rows);
-    alert('تم تحويل النص إلى جدول دورات');
+    alert(`تم تحويل النص إلى جدول دورات بعدد ${rows.length}`);
   }
 
   function downloadExcelTemplate() {
     const worksheet = XLSX.utils.aoa_to_sheet([
       excelTemplateHeaders,
-      ['تحليل بيانات الجرائم للجهات الأمنية', 'صباحية', '14', '2025-11-30', '2026-01-01', 'مركز الأمن السيبراني'],
+      ['تحليل بيانات الجرائم للجهات الأمنية', 'صباحية', '14', '', '2026-03-23', '2026-03-27', 'مركز الأمن السيبراني'],
     ]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Courses Template');
     XLSX.writeFile(workbook, 'weekly-courses-template.xlsx');
   }
 
+  function addHospitalityRequest() {
+    setHospitalityRequests((prev) => {
+      if (prev.length >= 4) return prev;
+      return [...prev, createHospitalityRequest()];
+    });
+  }
+
+  function removeHospitalityRequest(id: string) {
+    setHospitalityRequests((prev) => (prev.length === 1 ? prev : prev.filter((item) => item.id !== id)));
+  }
+
+  function updateHospitalityRequest(id: string, updates: Partial<HospitalityRequest>) {
+    setHospitalityRequests((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const next = { ...item, ...updates };
+        if (updates.items && !updates.items.includes('ضيافة VIP')) {
+          next.vipCount = '';
+        }
+        return next;
+      })
+    );
+  }
+
+  function toggleHospitalityItem(requestId: string, item: string) {
+    setHospitalityRequests((prev) =>
+      prev.map((request) => {
+        if (request.id !== requestId) return request;
+        const items = request.items.includes(item)
+          ? request.items.filter((current) => current !== item)
+          : [...request.items, item];
+        return {
+          ...request,
+          items,
+          vipCount: items.includes('ضيافة VIP') ? request.vipCount : '',
+        };
+      })
+    );
+  }
+
+  function toggleAllHospitalityItems(requestId: string) {
+    setHospitalityRequests((prev) =>
+      prev.map((request) => {
+        if (request.id !== requestId) return request;
+        const allSelected = hospitalityItems.every((item) => request.items.includes(item));
+        return {
+          ...request,
+          items: allSelected ? [] : [...hospitalityItems],
+          vipCount: allSelected ? '' : request.vipCount,
+        };
+      })
+    );
+  }
+
+  function toggleMultiValue(value: string, current: string[], setCurrent: (items: string[]) => void) {
+    if (current.includes(value)) {
+      setCurrent(current.filter((item) => item !== value));
+    } else {
+      setCurrent([...current, value]);
+    }
+  }
+
   function buildHospitalityTableRows() {
-    const items = selectedHospitalityItems.length ? selectedHospitalityItems.join('\n') : 'لا يوجد';
-    const rows = selectedHospitalityPlaces.map((place) => [place, items] as [string, string]);
+    const rows: Array<[string, string]> = hospitalityRequests
+      .filter((request) => request.place && request.items.length)
+      .map((request) => {
+        const items = request.items.map((item) => {
+          if (item === 'ضيافة VIP' && request.vipCount.trim()) {
+            return `ضيافة VIP لعدد ${request.vipCount.trim()}`;
+          }
+          return item;
+        });
+
+        return [request.place, items.join('\n')] as [string, string];
+      });
 
     if (hospitalityExtra.trim()) {
-      rows.push(['خدمات إضافية', hospitalityExtra]);
+      rows.push(['ملاحظات تشغيلية إضافية', hospitalityExtra.trim()]);
     }
 
-    return rows;
+    return rows.length ? rows : ([['لا يوجد', 'لا توجد طلبات إضافية محددة']] as Array<[string, string]>);
   }
 
   function buildSecurityText() {
@@ -550,7 +800,7 @@ export default function HomePage() {
       chosen.push(securityOther.trim());
     }
 
-    return chosen.join('\n');
+    return chosen.length ? chosen.join('\n') : 'حسب ما تقتضيه الحاجة التشغيلية.';
   }
 
   function buildSupportText() {
@@ -560,22 +810,19 @@ export default function HomePage() {
       chosen.push(supportOther.trim());
     }
 
-    return chosen.join('\n');
+    return chosen.length ? chosen.join('\n') : 'حسب ما تقتضيه الحاجة التشغيلية.';
   }
 
-  function generateEmail() {
+  const livePreviewHtml = useMemo(() => {
     if (!selectedDepartment) {
-      alert('اختر الإدارة');
-      return;
+      return '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة المطلوبة.</div>';
     }
 
     if (!courses.length) {
-      alert('أدخل الدورات أولًا');
-      return;
+      return '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">أضف الدورات أولًا، ثم ستظهر المعاينة مباشرة حسب الإدارة المختارة.</div>';
     }
 
     const coursesTable = buildCoursesTable(courses);
-
     let salutation = '';
     let intro = '';
     let extra = '';
@@ -595,21 +842,17 @@ export default function HomePage() {
       `;
 
       extra = `
-        ${buildSimpleTable('أوقات الراحة للدورات الصباحية', ['الفترة', 'التوقيت'], [
-          ['الراحة الأولى', morningBreak1],
-          ['الراحة الثانية', morningBreak2],
+        ${buildSimpleTable('أوقات الاستراحة', ['الفترة', 'التوقيت'], [
+          ['الاستراحة الأولى', buildBreakRange(break1Start, break1End)],
+          ['الاستراحة الثانية', buildBreakRange(break2Start, break2End)],
+          ['نوع الفترة المعتمدة', hospitalityBreakPeriod],
         ])}
-        ${buildSimpleTable('أوقات الراحة للدورات المسائية', ['الفترة', 'التوقيت'], [
-          ['الراحة الأولى', eveningBreak1],
-          ['الراحة الثانية', eveningBreak2],
-          ['الراحة الثالثة', eveningBreak3],
-        ])}
-        ${buildSimpleTable('الطلبات المطلوب تأمينها', ['الفئة / الموقع', 'العناصر المطلوبة'], buildHospitalityTableRows())}
+        ${buildSimpleTable('الطلبات المطلوب تأمينها خلال فترات الاستراحة', ['المكان', 'العناصر المطلوبة'], buildHospitalityTableRows())}
       `;
     }
 
     if (selectedDepartment === 'security') {
-      salutation = `<p style="margin:0 0 16px 0;">سعادة مدير إدارة الأمن والسلامة سلّمه الله</p>`;
+      salutation = '<p style="margin:0 0 16px 0;">سعادة مدير إدارة الأمن والسلامة سلّمه الله</p>';
 
       intro = `
         <p style="margin:0 0 12px 0;">السلام عليكم ورحمة الله وبركاته، وبعد:</p>
@@ -619,13 +862,12 @@ export default function HomePage() {
       `;
 
       extra = `
-        ${attachmentsRequired ? `<p style="margin:16px 0 12px 0;">وتجدون في المرفقات جميع المعلومات التفصيلية ذات العلاقة.</p>` : ''}
-        <div style="white-space:pre-line; border:1px solid #d6d7d4; padding:12px; background:#fff;">${escapeHtml(buildSecurityText())}</div>
+        <div style="margin-top:16px; border:1px solid #d6d7d4; padding:12px; background:#fff; white-space:pre-line;">${escapeHtml(buildSecurityText())}</div>
       `;
     }
 
     if (selectedDepartment === 'medical') {
-      salutation = `<p style="margin:0 0 16px 0;">سعادة مدير العيادة الطبية بالجامعة سلّمه الله</p>`;
+      salutation = '<p style="margin:0 0 16px 0;">سعادة مدير العيادة الطبية بالجامعة سلّمه الله</p>';
 
       intro = `
         <p style="margin:0 0 12px 0;">السلام عليكم ورحمة الله وبركاته، وبعد:</p>
@@ -645,7 +887,7 @@ export default function HomePage() {
     }
 
     if (selectedDepartment === 'support') {
-      salutation = `<p style="margin:0 0 16px 0;">سعادة مدير إدارة الخدمات المساندة سلّمه الله</p>`;
+      salutation = '<p style="margin:0 0 16px 0;">سعادة مدير إدارة الخدمات المساندة سلّمه الله</p>';
 
       intro = `
         <p style="margin:0 0 12px 0;">السلام عليكم ورحمة الله وبركاته، وبعد:</p>
@@ -664,7 +906,7 @@ export default function HomePage() {
       closing = 'شاكرين لكم تعاونكم الدائم، وتفضلوا بقبول أطيب التحايا والتقدير،،،';
     }
 
-    const html = `
+    return `
       <div dir="rtl" style="font-family:Cairo, Arial, sans-serif; color:#1f2937; line-height:1.9; font-size:15px;">
         <p style="margin:0 0 10px 0; font-weight:700;">الموضوع: ${escapeHtml(autoSubject)}</p>
         ${salutation}
@@ -677,33 +919,63 @@ export default function HomePage() {
         <p style="margin:0;">وكالة الجامعة للتدريب</p>
       </div>
     `;
+  }, [
+    selectedDepartment,
+    courses,
+    formattedStartDate,
+    autoSubject,
+    hospitalityBreakPeriod,
+    break1Start,
+    break1End,
+    break2Start,
+    break2End,
+    hospitalityRequests,
+    hospitalityExtra,
+    securitySelections,
+    securityOther,
+    securityGate,
+    medicalExtra,
+    supportSelections,
+    supportOther,
+  ]);
 
-    setPreviewHtml(html);
-    alert('تم توليد الرسالة');
+  function generateEmail() {
+    if (!selectedDepartment) {
+      alert('اختر الإدارة');
+      return;
+    }
+
+    if (!courses.length) {
+      alert('أدخل الدورات أولًا');
+      return;
+    }
+
+    alert('تم تحديث المعاينة وفق البيانات الحالية');
   }
 
   async function copyEmail() {
-    if (!previewHtml) return;
+    if (!livePreviewHtml) return;
 
     try {
-      if (navigator.clipboard && 'write' in navigator && (window as any).ClipboardItem) {
-        const item = new (window as any).ClipboardItem({
-          'text/html': new Blob([previewHtml], { type: 'text/html' }),
-          'text/plain': new Blob([toPlainText(previewHtml)], { type: 'text/plain' }),
+      const htmlDocument = buildWordCompatibleHtml(livePreviewHtml);
+      if (navigator.clipboard && 'write' in navigator && (window as unknown as { ClipboardItem?: typeof ClipboardItem }).ClipboardItem) {
+        const item = new ClipboardItem({
+          'text/html': new Blob([htmlDocument], { type: 'text/html' }),
+          'text/plain': new Blob([toPlainText(livePreviewHtml)], { type: 'text/plain' }),
         });
-        await (navigator.clipboard as any).write([item]);
+        await navigator.clipboard.write([item]);
       } else {
-        await navigator.clipboard.writeText(toPlainText(previewHtml));
+        await navigator.clipboard.writeText(toPlainText(livePreviewHtml));
       }
-      alert('تم نسخ الرسالة');
+      alert('تم نسخ الرسالة. ملاحظة: Outlook قد يغيّر بعض التنسيق عند اللصق، لذلك سنجهز لاحقًا حل الأرشفة/التصدير والصورة كمرحلة ثانية.');
     } catch {
       alert('تعذر نسخ الرسالة');
     }
   }
 
   function openDraft() {
-    if (!selectedDeptData || !previewHtml) return;
-    const url = `mailto:${encodeURIComponent(selectedDeptData.emailTo)}?subject=${encodeURIComponent(autoSubject)}&cc=${encodeURIComponent(cc)}&body=${encodeURIComponent(toPlainText(previewHtml))}`;
+    if (!selectedDeptData || !livePreviewHtml) return;
+    const url = `mailto:${encodeURIComponent(selectedDeptData.emailTo)}?subject=${encodeURIComponent(autoSubject)}&cc=${encodeURIComponent(cc)}&body=${encodeURIComponent(toPlainText(livePreviewHtml))}`;
     window.location.href = url;
   }
 
@@ -892,7 +1164,7 @@ export default function HomePage() {
                           <button
                             key={mode.key}
                             type="button"
-                            onClick={() => setInputMode(mode.key as 'excel' | 'manual' | 'paste')}
+                            onClick={() => setInputMode(mode.key as InputMode)}
                             className={`rounded-xl border px-3 py-2 text-sm ${
                               inputMode === mode.key
                                 ? 'border-[#016564] bg-[#016564] text-white'
@@ -917,7 +1189,7 @@ export default function HomePage() {
                           }}
                           className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2"
                         />
-                        <div className="mt-2 flex gap-2">
+                        <div className="mt-2 flex flex-wrap gap-2">
                           <button
                             type="button"
                             onClick={downloadExcelTemplate}
@@ -928,7 +1200,7 @@ export default function HomePage() {
                           {fileName ? <div className="text-sm text-[#016564]">تم رفع: {fileName}</div> : null}
                         </div>
                         <div className="mt-2 text-xs text-[#8c6968]">
-                          الأعمدة المقترحة: {excelTemplateHeaders.join(' | ')}
+                          الأعمدة المطلوبة ذكيًا: {excelTemplateHeaders.join(' | ')}
                         </div>
                       </div>
                     )}
@@ -939,8 +1211,8 @@ export default function HomePage() {
                         <textarea
                           value={pastedText}
                           onChange={(e) => setPastedText(e.target.value)}
-                          rows={6}
-                          placeholder={`عنوان الدورة\tنوع الفترة\tعدد المشاركين\tتاريخ البداية\tتاريخ النهاية\tالموقع`}
+                          rows={7}
+                          placeholder={`عنوان الدورة\tنوع الفترة\tعدد المشاركين\tتاريخ البداية\tتاريخ النهاية\tالموقع\nأو الصق جدولًا أكبر وسيأخذ النظام الأعمدة المهمة فقط`}
                           className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2 outline-none focus:border-[#016564]"
                         />
                         <button
@@ -1006,7 +1278,16 @@ export default function HomePage() {
                             />
                           </div>
 
-                          <div className="sm:col-span-2">
+                          <div>
+                            <label className="mb-1 block text-sm text-gray-600">مدة البرنامج</label>
+                            <input
+                              value={buildDurationText(courseForm.startDate, courseForm.endDate)}
+                              readOnly
+                              className="w-full rounded-xl border border-[#d6d7d4] bg-[#f8f9f9] px-3 py-2 text-[#016564]"
+                            />
+                          </div>
+
+                          <div>
                             <label className="mb-1 block text-sm text-gray-600">الموقع</label>
                             <select
                               value={courseForm.location}
@@ -1070,10 +1351,10 @@ export default function HomePage() {
                                   <td className="border border-[#d6d7d4] px-3 py-2">{course.location}</td>
                                   <td className="border border-[#d6d7d4] px-3 py-2">
                                     <div className="flex gap-2">
-                                      <button type="button" onClick={() => editCourse(index)} className="text-[#016564]">
+                                      <button type="button" onClick={() => editCourse(index)} className="rounded-lg border border-[#d0b284] px-3 py-1 text-xs font-semibold text-[#016564]">
                                         تعديل
                                       </button>
-                                      <button type="button" onClick={() => deleteCourse(index)} className="text-[#7c1e3e]">
+                                      <button type="button" onClick={() => deleteCourse(index)} className="rounded-lg border border-[#e6d2d2] px-3 py-1 text-xs font-semibold text-[#7c1e3e]">
                                         حذف
                                       </button>
                                     </div>
@@ -1089,50 +1370,123 @@ export default function HomePage() {
                     {selectedDepartment === 'hospitality' && (
                       <>
                         <div className="rounded-2xl border border-[#e6e9e9] p-4">
-                          <div className="mb-2 text-sm font-semibold text-[#016564]">أوقات الراحة</div>
+                          <div className="mb-3 text-sm font-semibold text-[#016564]">أوقات الاستراحة</div>
                           <div className="grid gap-3 sm:grid-cols-2">
-                            <input value={morningBreak1} onChange={(e) => setMorningBreak1(e.target.value)} className="rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="الراحة الصباحية الأولى" />
-                            <input value={morningBreak2} onChange={(e) => setMorningBreak2(e.target.value)} className="rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="الراحة الصباحية الثانية" />
-                            <input value={eveningBreak1} onChange={(e) => setEveningBreak1(e.target.value)} className="rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="الراحة المسائية الأولى" />
-                            <input value={eveningBreak2} onChange={(e) => setEveningBreak2(e.target.value)} className="rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="الراحة المسائية الثانية" />
-                            <input value={eveningBreak3} onChange={(e) => setEveningBreak3(e.target.value)} className="rounded-xl border border-[#d6d7d4] px-3 py-2 sm:col-span-2" placeholder="الراحة المسائية الثالثة" />
+                            <div className="sm:col-span-2">
+                              <label className="mb-1 block text-sm text-gray-600">نوع الفترة</label>
+                              <select
+                                value={hospitalityBreakPeriod}
+                                onChange={(e) => setHospitalityBreakPeriod(e.target.value as BreakPeriod)}
+                                className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2"
+                              >
+                                <option value="صباحية">صباحية</option>
+                                <option value="مسائية">مسائية</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="mb-1 block text-sm text-gray-600">بداية الاستراحة الأولى</label>
+                              <input type="time" value={break1Start} onChange={(e) => setBreak1Start(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-sm text-gray-600">نهاية الاستراحة الأولى</label>
+                              <input type="time" value={break1End} onChange={(e) => setBreak1End(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-sm text-gray-600">بداية الاستراحة الثانية</label>
+                              <input type="time" value={break2Start} onChange={(e) => setBreak2Start(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-sm text-gray-600">نهاية الاستراحة الثانية</label>
+                              <input type="time" value={break2End} onChange={(e) => setBreak2End(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" />
+                            </div>
                           </div>
                         </div>
 
                         <div className="rounded-2xl border border-[#e6e9e9] p-4">
-                          <div className="mb-2 text-sm font-semibold text-[#016564]">أماكن الضيافة</div>
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            {hospitalityPlaces.map((item) => (
-                              <label key={item} className="flex items-center gap-2 text-sm">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedHospitalityPlaces.includes(item)}
-                                  onChange={() => toggleMultiValue(item, selectedHospitalityPlaces, setSelectedHospitalityPlaces)}
-                                />
-                                {item}
-                              </label>
-                            ))}
+                          <div className="mb-3 flex items-center justify-between">
+                            <div className="text-sm font-semibold text-[#016564]">الطلبات المطلوب تأمينها خلال فترات الاستراحة</div>
+                            <button
+                              type="button"
+                              onClick={addHospitalityRequest}
+                              className="rounded-xl border border-[#d0b284] px-3 py-2 text-xs font-semibold text-[#016564]"
+                            >
+                              إضافة مكان آخر
+                            </button>
                           </div>
-                        </div>
 
-                        <div className="rounded-2xl border border-[#e6e9e9] p-4">
-                          <div className="mb-2 text-sm font-semibold text-[#016564]">العناصر المطلوبة</div>
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            {hospitalityItems.map((item) => (
-                              <label key={item} className="flex items-center gap-2 text-sm">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedHospitalityItems.includes(item)}
-                                  onChange={() => toggleMultiValue(item, selectedHospitalityItems, setSelectedHospitalityItems)}
-                                />
-                                {item}
-                              </label>
-                            ))}
+                          <div className="space-y-4">
+                            {hospitalityRequests.map((request, index) => {
+                              const allSelected = hospitalityItems.every((item) => request.items.includes(item));
+                              return (
+                                <div key={request.id} className="rounded-2xl border border-[#edf0f0] p-4">
+                                  <div className="mb-3 flex items-center justify-between gap-3">
+                                    <div className="text-sm font-semibold text-[#016564]">الموقع {index + 1}</div>
+                                    {hospitalityRequests.length > 1 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeHospitalityRequest(request.id)}
+                                        className="rounded-lg border border-[#e6d2d2] px-3 py-1 text-xs font-semibold text-[#7c1e3e]"
+                                      >
+                                        حذف الموقع
+                                      </button>
+                                    ) : null}
+                                  </div>
+
+                                  <div className="mb-3">
+                                    <label className="mb-1 block text-sm text-gray-600">المكان</label>
+                                    <select
+                                      value={request.place}
+                                      onChange={(e) => updateHospitalityRequest(request.id, { place: e.target.value })}
+                                      className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2"
+                                    >
+                                      {hospitalityPlaces.map((place) => (
+                                        <option key={place} value={place}>
+                                          {place}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#016564]">
+                                    <input type="checkbox" checked={allSelected} onChange={() => toggleAllHospitalityItems(request.id)} />
+                                    تحديد جميع العناصر
+                                  </label>
+
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    {hospitalityItems.map((item) => {
+                                      const checked = request.items.includes(item);
+                                      return (
+                                        <div key={`${request.id}-${item}`} className="rounded-xl border border-[#edf0f0] px-3 py-2">
+                                          <label className="flex items-center gap-2 text-sm">
+                                            <input
+                                              type="checkbox"
+                                              checked={checked}
+                                              onChange={() => toggleHospitalityItem(request.id, item)}
+                                            />
+                                            {item}
+                                          </label>
+
+                                          {item === 'ضيافة VIP' && checked ? (
+                                            <input
+                                              value={request.vipCount}
+                                              onChange={(e) => updateHospitalityRequest(request.id, { vipCount: e.target.value })}
+                                              placeholder="لعدد ..."
+                                              className="mt-2 w-full rounded-lg border border-[#d6d7d4] px-3 py-2 text-sm"
+                                            />
+                                          ) : null}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
 
                         <div>
-                          <label className="mb-1 block text-sm text-gray-600">خدمات إضافية</label>
+                          <label className="mb-1 block text-sm text-gray-600">ملاحظات تشغيلية إضافية</label>
                           <textarea
                             value={hospitalityExtra}
                             onChange={(e) => setHospitalityExtra(e.target.value)}
@@ -1177,15 +1531,6 @@ export default function HomePage() {
                             />
                           </div>
                         )}
-
-                        <label className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={attachmentsRequired}
-                            onChange={(e) => setAttachmentsRequired(e.target.checked)}
-                          />
-                          توجد مرفقات
-                        </label>
                       </>
                     )}
 
@@ -1235,7 +1580,7 @@ export default function HomePage() {
 
                     <div className="grid gap-2 sm:grid-cols-3">
                       <button onClick={generateEmail} type="button" className="rounded-xl bg-[#016564] px-4 py-3 text-sm font-semibold text-white">
-                        توليد الرسالة
+                        تحديث المعاينة
                       </button>
                       <button onClick={copyEmail} type="button" className="rounded-xl border border-[#d0b284] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">
                         نسخ الرسالة
@@ -1256,9 +1601,7 @@ export default function HomePage() {
                   <div
                     className="min-h-[600px] rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4"
                     dangerouslySetInnerHTML={{
-                      __html:
-                        previewHtml ||
-                        '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة، حدّد تاريخ البداية، أضف الدورات، ثم اضغط توليد الرسالة.</div>',
+                      __html: livePreviewHtml,
                     }}
                   />
                 </div>
