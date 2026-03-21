@@ -5,8 +5,9 @@ import * as XLSX from 'xlsx';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 
-type ModuleKey = 'weekly' | 'operational' | 'leadership' | 'general';
+type HomeModuleKey = 'weekly' | 'operational' | 'leadership' | 'general';
 type DepartmentKey = 'hospitality' | 'security' | 'medical' | 'support';
+type WeeklyView = 'home' | 'form';
 
 type CourseRecord = {
   title: string;
@@ -17,11 +18,41 @@ type CourseRecord = {
   location: string;
 };
 
-const moduleCards: Array<{ key: ModuleKey; title: string; icon: string; enabled: boolean }> = [
-  { key: 'weekly', title: 'المراسلات الأسبوعية', icon: '🗓️', enabled: true },
-  { key: 'operational', title: 'المراسلات التشغيلية', icon: '⚙️', enabled: false },
-  { key: 'leadership', title: 'المراسلات القيادية', icon: '📌', enabled: false },
-  { key: 'general', title: 'المراسلات العامة', icon: '✉️', enabled: false },
+const homeModules: Array<{
+  key: HomeModuleKey;
+  title: string;
+  description: string;
+  icon: string;
+  accent: string;
+}> = [
+  {
+    key: 'weekly',
+    title: 'المراسلات الأسبوعية',
+    description: 'المراسلات الدورية المرتبطة بتنفيذ الدورات التدريبية',
+    icon: '🗓️',
+    accent: '#016564',
+  },
+  {
+    key: 'operational',
+    title: 'المراسلات التشغيلية',
+    description: 'طلبات الدعم والتنسيق والتشغيل',
+    icon: '⚙️',
+    accent: '#498983',
+  },
+  {
+    key: 'leadership',
+    title: 'المراسلات القيادية',
+    description: 'الاعتمادات والموافقات والرفع القيادي',
+    icon: '📌',
+    accent: '#7c1e3e',
+  },
+  {
+    key: 'general',
+    title: 'المراسلات العامة',
+    description: 'تذكير ومتابعة وشكر وتصعيد',
+    icon: '✉️',
+    accent: '#8c6968',
+  },
 ];
 
 const departments = [
@@ -167,7 +198,7 @@ function formatDisplayDate(dateStr: string) {
 function formatCourseDateRange(start: string, end: string) {
   if (!start && !end) return '';
   if (start && !end) return formatDisplayDate(start);
-  if (!start && end) return formatDisplayDate(end);
+  if (!start && !end) return '';
   if (start === end) return formatDisplayDate(start);
   return `${formatDisplayDate(start)} - ${formatDisplayDate(end)}`;
 }
@@ -338,7 +369,7 @@ function buildSimpleTable(title: string, headers: [string, string], rows: Array<
 }
 
 export default function HomePage() {
-  const [activeModule, setActiveModule] = useState<ModuleKey>('weekly');
+  const [weeklyView, setWeeklyView] = useState<WeeklyView>('home');
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentKey | null>(null);
 
   const [cc, setCc] = useState('');
@@ -375,7 +406,6 @@ export default function HomePage() {
   const [attachmentsRequired, setAttachmentsRequired] = useState(true);
 
   const [medicalExtra, setMedicalExtra] = useState('');
-
   const [supportSelections, setSupportSelections] = useState<string[]>([]);
   const [supportOther, setSupportOther] = useState('');
 
@@ -544,7 +574,6 @@ export default function HomePage() {
       return;
     }
 
-    const totalParticipants = courses.reduce((sum, item) => sum + Number(item.participants || 0), 0);
     const coursesTable = buildCoursesTable(courses);
 
     let salutation = '';
@@ -650,7 +679,7 @@ export default function HomePage() {
     `;
 
     setPreviewHtml(html);
-    alert(`تم توليد الرسالة. إجمالي المشاركين: ${totalParticipants}`);
+    alert('تم توليد الرسالة');
   }
 
   async function copyEmail() {
@@ -684,31 +713,98 @@ export default function HomePage() {
 
       <main className="flex-1 py-6">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <section className="mb-5 grid gap-3 md:grid-cols-4">
-            {moduleCards.map((card) => {
-              const active = activeModule === card.key;
-              return (
-                <button
-                  key={card.key}
-                  type="button"
-                  disabled={!card.enabled}
-                  onClick={() => card.enabled && setActiveModule(card.key)}
-                  className={`rounded-2xl border p-4 text-right transition ${
-                    active
-                      ? 'border-[#016564] bg-white shadow-sm'
-                      : 'border-[#e1e5e5] bg-white/80'
-                  } ${card.enabled ? 'hover:border-[#d0b284]' : 'cursor-not-allowed opacity-60'}`}
-                >
-                  <div className="mb-2 text-2xl">{card.icon}</div>
-                  <div className="text-sm font-semibold text-[#016564]">{card.title}</div>
-                  {!card.enabled ? <div className="mt-1 text-xs text-[#8c6968]">قريبًا</div> : null}
-                </button>
-              );
-            })}
-          </section>
-
-          {activeModule === 'weekly' && (
+          {weeklyView === 'home' && (
             <>
+              <section className="mb-6">
+                <div className="rounded-[28px] border border-[#e2e7e7] bg-white px-6 py-7 shadow-sm">
+                  <h2 className="text-2xl font-semibold text-[#016564] sm:text-3xl">
+                    اختر نوع المراسلة
+                  </h2>
+                  <p className="mt-2 text-sm text-[#8c6968] sm:text-base">
+                    واجهة رئيسية منظمة للوصول السريع إلى القوالب والمراسلات.
+                  </p>
+                </div>
+              </section>
+
+              <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {homeModules.map((module) => (
+                  <div
+                    key={module.key}
+                    className="rounded-[24px] border border-[#e1e5e5] bg-white p-5 shadow-sm"
+                  >
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl"
+                          style={{ backgroundColor: `${module.accent}12` }}
+                        >
+                          {module.icon}
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-[#016564]">
+                            {module.title}
+                          </h3>
+                          <p className="mt-1 text-sm text-[#8c6968]">
+                            {module.description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {module.key === 'weekly' ? (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() => setWeeklyView('form')}
+                          className="rounded-2xl border border-[#d0b284] bg-[#f8f9f9] px-4 py-4 text-right transition hover:border-[#016564] hover:bg-white"
+                        >
+                          <div className="mb-1 text-xl">📅</div>
+                          <div className="text-sm font-semibold text-[#016564]">
+                            تنفيذ الدورات التدريبية
+                          </div>
+                          <div className="mt-1 text-xs text-[#8c6968]">
+                            نموذج أسبوعي موحد لتبليغ الإدارات المعنية
+                          </div>
+                        </button>
+
+                        <div className="rounded-2xl border border-dashed border-[#d6d7d4] bg-[#fcfdfd] px-4 py-4 text-right">
+                          <div className="mb-1 text-xl">🗂️</div>
+                          <div className="text-sm font-semibold text-[#8c6968]">
+                            قوالب أسبوعية أخرى
+                          </div>
+                          <div className="mt-1 text-xs text-[#98aaaa]">
+                            ستُضاف لاحقًا
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-[#d6d7d4] bg-[#fcfdfd] px-4 py-5 text-right">
+                        <div className="text-sm font-semibold text-[#8c6968]">قريبًا</div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </section>
+            </>
+          )}
+
+          {weeklyView === 'form' && (
+            <>
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold text-[#016564]">المراسلات الأسبوعية</h2>
+                  <p className="mt-1 text-sm text-[#8c6968]">تنفيذ الدورات التدريبية</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setWeeklyView('home')}
+                  className="rounded-xl border border-[#d6d7d4] bg-white px-4 py-2 text-sm font-semibold text-[#016564]"
+                >
+                  العودة للرئيسية
+                </button>
+              </div>
+
               <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
                 {departments.map((dept) => {
                   const active = selectedDepartment === dept.key;
