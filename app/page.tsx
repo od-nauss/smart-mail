@@ -378,8 +378,7 @@ function buildBreakSentence(firstStart: string, firstEnd: string, secondStart: s
   const segments = [];
   if (firstStart || firstEnd) segments.push(`• الاستراحة الأولى: ${formatBreakRange(firstStart, firstEnd)}`);
   if (secondStart || secondEnd) segments.push(`• الاستراحة الثانية: ${formatBreakRange(secondStart, secondEnd)}`);
-  return segments.length ? segments.join('
-') : '• يتم التنسيق لاحقًا.';
+  return segments.length ? segments.join('\n') : '• يتم التنسيق لاحقًا.';
 }
 
 function smartComposeRequest(raw: string, context: 'hospitality' | 'security' | 'medical' | 'support') {
