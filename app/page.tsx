@@ -663,6 +663,108 @@ function parseRowsFromPastedText(text: string) {
   return records;
 }
 
+
+function buildWordDocumentHtml(subject: string, bodyHtml: string) {
+  return `
+  <html dir="rtl" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="ProgId" content="Word.Document" />
+      <meta name="Generator" content="Microsoft Word 15" />
+      <meta name="Originator" content="Microsoft Word 15" />
+      <title>${escapeHtml(subject)}</title>
+      <!--[if gte mso 9]>
+      <xml>
+        <w:WordDocument>
+          <w:View>Print</w:View>
+          <w:Zoom>100</w:Zoom>
+          <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+      </xml>
+      <![endif]-->
+      <style>
+        @page { size: A4; margin: 1.6cm; }
+        body {
+          direction: rtl;
+          font-family: Cairo, Arial, sans-serif;
+          color: #1f2937;
+          background: #ffffff;
+          margin: 0;
+          padding: 0;
+          line-height: 1.9;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .page-shell {
+          width: 100%;
+          max-width: 100%;
+          margin: 0 auto;
+          background: #ffffff;
+          border: 1px solid #e6dcc8;
+          border-radius: 18px;
+          padding: 22px;
+          box-sizing: border-box;
+        }
+        .hero {
+          margin-bottom: 18px;
+          text-align: right;
+        }
+        .hero img {
+          width: 160px;
+          height: auto;
+          display: inline-block;
+          margin-bottom: 12px;
+        }
+        .subject {
+          color: #016564;
+          font-size: 18pt;
+          font-weight: bold;
+          margin: 6px 0 0 0;
+        }
+        table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          table-layout: fixed !important;
+          margin-top: 12px !important;
+          margin-bottom: 14px !important;
+          page-break-inside: auto;
+        }
+        tr {
+          page-break-inside: avoid;
+          page-break-after: auto;
+        }
+        th, td {
+          border: 1px solid #d6d7d4 !important;
+          padding: 8px 10px !important;
+          font-size: 11pt !important;
+          vertical-align: middle !important;
+          word-break: break-word !important;
+          white-space: normal !important;
+          text-align: center !important;
+        }
+        th {
+          background: #016564 !important;
+          color: #ffffff !important;
+          font-weight: bold !important;
+        }
+        p, div, span, li {
+          font-size: 11.5pt !important;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="page-shell">
+        <div class="hero">
+          <img src="${typeof window !== 'undefined' ? `${window.location.origin}/naif-logo.png` : '/naif-logo.png'}" alt="شعار جامعة نايف" />
+          <div class="subject">الموضوع: ${escapeHtml(subject)}</div>
+        </div>
+        ${bodyHtml}
+      </div>
+    </body>
+  </html>
+  `;
+}
+
 export default function HomePage() {
   const [weeklyView, setWeeklyView] = useState<WeeklyView>('home');
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentKey | null>(null);
@@ -1215,15 +1317,52 @@ export default function HomePage() {
     }
 
     try {
-      const dataUrl = await toJpeg(posterRef.current, { quality: 0.96, pixelRatio: 2, cacheBust: true, backgroundColor: '#f8f9f9' });
+      const dataUrl = await toJpeg(posterRef.current, {
+        quality: 0.98,
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: '#f8f9f9',
+        canvasWidth: 1400,
+        skipFonts: true,
+      });
+
       const link = document.createElement('a');
       link.download = `${autoSubject || 'smart-mail'}.jpg`;
       link.href = dataUrl;
       link.click();
-      setSystemNotice('تم تصدير الرسالة كصورة JPG بنجاح، وتم تهيئة النموذج لرسالة جديدة.');
+
+      setSystemNotice('تم تصدير الرسالة كصورة JPG بنجاح.');
       resetWeeklyForm();
     } catch {
       setSystemNotice('تعذر تصدير الصورة حاليًا.');
+    }
+  }
+
+  function exportAsWord() {
+    if (!previewHtml || !autoSubject) {
+      setSystemNotice('أكمل المعاينة أولًا قبل التصدير.');
+      return;
+    }
+
+    try {
+      const html = buildWordDocumentHtml(autoSubject, previewHtml);
+      const blob = new Blob(['﻿', html], {
+        type: 'application/msword',
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${autoSubject}.doc`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setSystemNotice('تم تصدير الرسالة كملف Word بنجاح.');
+      resetWeeklyForm();
+    } catch {
+      setSystemNotice('تعذر تصدير ملف Word حاليًا.');
     }
   }
 
@@ -1551,7 +1690,7 @@ export default function HomePage() {
 
                     <div className="grid gap-2 sm:grid-cols-4">
                       <button onClick={saveToArchive} type="button" className="rounded-xl bg-[#016564] px-4 py-3 text-sm font-semibold text-white">حفظ في الأرشيف</button>
-                      <button onClick={copyEmail} type="button" className="rounded-xl border border-[#d0b284] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">نسخ الرسالة</button>
+                      <button onClick={exportAsWord} type="button" className="rounded-xl border border-[#d0b284] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">تصدير Word</button>
                       <button onClick={openDraft} type="button" className="rounded-xl border border-[#d6d7d4] bg-[#f8f9f9] px-4 py-3 text-sm font-semibold text-[#016564]">فتح مسودة بريد</button>
                       <button onClick={exportAsJpg} type="button" className="rounded-xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">تصدير JPG</button>
                     </div>
@@ -1566,17 +1705,81 @@ export default function HomePage() {
                     </div>
                     <div ref={previewRef} className="min-h-[600px] rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4" dangerouslySetInnerHTML={{ __html: previewHtml || '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة، حدّد تاريخ البداية، أضف الدورات، وستُحدَّث المعاينة تلقائيًا.</div>' }} />
                     <div className="sr-only" aria-hidden>
-                      <div ref={posterRef} style={{ width: '1080px', background: 'linear-gradient(180deg, #f8f9f9 0%, #ffffff 100%)', padding: '42px', color: '#1f2937', fontFamily: 'Cairo, Arial, sans-serif', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(208,178,132,0.18), transparent 24%), radial-gradient(circle at 80% 10%, rgba(1,101,100,0.09), transparent 18%), repeating-linear-gradient(45deg, rgba(208,178,132,0.08) 0, rgba(208,178,132,0.08) 2px, transparent 2px, transparent 18px)' }} />
-                        <div style={{ position: 'relative', border: '1px solid #e4d6bc', borderRadius: '28px', padding: '28px', background: 'rgba(255,255,255,0.94)', boxShadow: '0 22px 48px rgba(1,101,100,0.08)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                            <div>
-                              <div style={{ color: '#016564', fontSize: '30px', fontWeight: 800 }}>منصة المراسلات الذكية</div>
-                              <div style={{ color: '#8c6968', fontSize: '16px' }}>جامعة نايف العربية للعلوم الأمنية</div>
+                      <div
+                        ref={posterRef}
+                        style={{
+                          width: '1400px',
+                          background: 'linear-gradient(180deg, #f7f8f7 0%, #ffffff 100%)',
+                          padding: '36px',
+                          color: '#1f2937',
+                          fontFamily: 'Cairo, Arial, sans-serif',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            backgroundImage:
+                              'radial-gradient(circle at 15% 15%, rgba(208,178,132,0.18), transparent 22%), radial-gradient(circle at 85% 8%, rgba(1,101,100,0.08), transparent 16%), repeating-linear-gradient(45deg, rgba(208,178,132,0.05) 0, rgba(208,178,132,0.05) 2px, transparent 2px, transparent 20px)',
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: 'relative',
+                            border: '1px solid #e4d6bc',
+                            borderRadius: '30px',
+                            padding: '28px 30px',
+                            background: 'rgba(255,255,255,0.97)',
+                            boxShadow: '0 18px 44px rgba(1,101,100,0.08)',
+                            boxSizing: 'border-box',
+                          }}
+                        >
+                          <div style={{ textAlign: 'right', marginBottom: '18px' }}>
+                            <img src="/naif-logo.png" alt="شعار جامعة نايف" style={{ width: '185px', height: 'auto', objectFit: 'contain', marginBottom: '12px' }} />
+                            <div style={{ color: '#016564', fontSize: '28px', fontWeight: 800 }}>
+                              الموضوع: {autoSubject}
                             </div>
-                            <img src="/naif-logo.png" alt="شعار جامعة نايف" style={{ width: '170px', height: 'auto', objectFit: 'contain' }} />
                           </div>
-                          <div dangerouslySetInnerHTML={{ __html: previewHtml || '' }} />
+
+                          <style>{`
+                            .poster-html * {
+                              box-sizing: border-box !important;
+                            }
+                            .poster-html table {
+                              width: 100% !important;
+                              border-collapse: collapse !important;
+                              table-layout: fixed !important;
+                              margin-top: 12px !important;
+                              margin-bottom: 14px !important;
+                            }
+                            .poster-html th,
+                            .poster-html td {
+                              border: 1px solid #d6d7d4 !important;
+                              padding: 10px 8px !important;
+                              font-size: 22px !important;
+                              line-height: 1.7 !important;
+                              vertical-align: middle !important;
+                              text-align: center !important;
+                              white-space: normal !important;
+                              word-break: break-word !important;
+                            }
+                            .poster-html th {
+                              background: #016564 !important;
+                              color: #ffffff !important;
+                              font-weight: 800 !important;
+                            }
+                            .poster-html p,
+                            .poster-html div,
+                            .poster-html span {
+                              font-size: 23px !important;
+                              line-height: 1.9 !important;
+                            }
+                          `}</style>
+
+                          <div className="poster-html" dangerouslySetInnerHTML={{ __html: previewHtml || '' }} />
                         </div>
                       </div>
                     </div>
