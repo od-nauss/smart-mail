@@ -867,21 +867,43 @@ function buildDraftHtmlDocument(subject: string, bodyHtml: string) {
 }
 
 function buildOutlookDraftEml(to: string, cc: string, subject: string, bodyHtml: string) {
-  const html = buildDraftHtmlDocument(subject, bodyHtml);
-  const encodedHtml = typeof window !== 'undefined'
-    ? window.btoa(unescape(encodeURIComponent(html)))
-    : Buffer.from(html, 'utf8').toString('base64');
+  const htmlDocument = buildDraftHtmlDocument(subject, bodyHtml);
+  const plainText = htmlToPlainText(stripLeadingSubjectRow(bodyHtml));
+
+  const encodeBase64Utf8 = (value: string) => {
+    if (typeof window !== 'undefined') {
+      return window.btoa(unescape(encodeURIComponent(value)));
+    }
+    return Buffer.from(value, 'utf8').toString('base64');
+  };
+
+  const boundary = `smart-mail-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const encodedText = wrapBase64(encodeBase64Utf8(plainText));
+  const encodedHtml = wrapBase64(encodeBase64Utf8(htmlDocument));
+  const dateHeader = new Date().toUTCString();
 
   const lines = [
     `To: ${to}`,
     cc.trim() ? `Cc: ${cc}` : '',
     `Subject: ${encodeMimeWord(subject)}`,
+    `Date: ${dateHeader}`,
     'MIME-Version: 1.0',
     'X-Unsent: 1',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    encodedText,
+    '',
+    `--${boundary}`,
     'Content-Type: text/html; charset=UTF-8',
     'Content-Transfer-Encoding: base64',
     '',
-    wrapBase64(encodedHtml),
+    encodedHtml,
+    '',
+    `--${boundary}--`,
     '',
   ].filter(Boolean);
 
