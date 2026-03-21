@@ -191,7 +191,7 @@ const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', '�
 const arabicWeekdays = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 const HEADER_CANDIDATES = {
-  title: ['اسم الدورة باللغة العربية', 'اسم الدورة', 'اسم البرنامج باللغة العربية', 'اسم البرنامج', 'عنوان الدورة', 'الدورة', 'البرنامج التدريبي'],
+  title: ['اسم التدريب', 'اسم التدريب باللغة العربية', 'اسم الدورة باللغة العربية', 'اسم الدورة', 'عنوان الدورة', 'الدورة التدريبية', 'الدورة', 'البرنامج التدريبي', 'اسم البرنامج باللغة العربية', 'اسم البرنامج'],
   period: ['الفترة', 'نوع الفترة', 'الفترة التدريبية'],
   participants: ['عدد المتدربين', 'عدد المشاركين', 'المشاركون', 'العدد المعتمد', 'العدد'],
   startDate: ['تاريخ البداية', 'تاريخ بدء التنفيذ', 'بداية التنفيذ', 'بداية الدورة', 'من', 'تاريخ البدء'],
@@ -250,8 +250,24 @@ function findHeader(row: Record<string, unknown>, candidates: string[]) {
   return '';
 }
 
+function parseIsoDateParts(dateStr: string) {
+  const match = String(dateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
+}
+
+function createLocalDate(dateStr: string) {
+  const parts = parseIsoDateParts(dateStr);
+  if (!parts) return null;
+  return new Date(parts.year, parts.month - 1, parts.day, 12, 0, 0, 0);
+}
+
 function parseExcelDateValue(value: unknown) {
   if (value === null || value === undefined || value === '') return '';
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
+  }
 
   if (typeof value === 'number') {
     const parsed = XLSX.SSF.parse_date_code(value);
@@ -259,7 +275,7 @@ function parseExcelDateValue(value: unknown) {
     return `${parsed.y}-${pad2(parsed.m)}-${pad2(parsed.d)}`;
   }
 
-  const raw = normalizeArabicDigits(String(value).trim());
+  const raw = normalizeArabicDigits(String(value).trim()).replace(/م$/, '').trim();
   if (!raw) return '';
 
   const isoMatch = raw.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
@@ -284,9 +300,9 @@ function parseExcelDateValue(value: unknown) {
 
 function countWorkingDays(start: string, end: string) {
   if (!start || !end) return 0;
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) return 0;
+  const startDate = createLocalDate(start);
+  const endDate = createLocalDate(end);
+  if (!startDate || !endDate || startDate > endDate) return 0;
 
   let count = 0;
   const current = new Date(startDate);
@@ -307,10 +323,9 @@ function buildDurationText(start: string, end: string) {
 }
 
 function formatDisplayDate(dateStr: string) {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  if (Number.isNaN(date.getTime())) return '';
-  return `${pad2(date.getDate())} / ${pad2(date.getMonth() + 1)} / ${date.getFullYear()}م`;
+  const parts = parseIsoDateParts(dateStr);
+  if (!parts) return '';
+  return `${pad2(parts.day)} / ${pad2(parts.month)} / ${parts.year}م`;
 }
 
 function formatCourseDateRange(start: string, end: string) {
@@ -323,8 +338,8 @@ function formatCourseDateRange(start: string, end: string) {
 
 function getWeekLabelFromDate(dateStr: string) {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
-  if (Number.isNaN(date.getTime())) return '';
+  const date = createLocalDate(dateStr);
+  if (!date) return '';
   const weekNumber = Math.ceil(date.getDate() / 7);
   const weekText = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس'][weekNumber - 1] || String(weekNumber);
   return `الأسبوع ${weekText} - ${arabicMonths[date.getMonth()]}`;
@@ -332,8 +347,8 @@ function getWeekLabelFromDate(dateStr: string) {
 
 function getFormattedStartDate(dateStr: string) {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
-  if (Number.isNaN(date.getTime())) return '';
+  const date = createLocalDate(dateStr);
+  if (!date) return '';
   return `${arabicWeekdays[date.getDay()]} ${pad2(date.getDate())} / ${pad2(date.getMonth() + 1)} / ${date.getFullYear()}م`;
 }
 
@@ -361,9 +376,10 @@ function formatBreakRange(start: string, end: string) {
 
 function buildBreakSentence(firstStart: string, firstEnd: string, secondStart: string, secondEnd: string) {
   const segments = [];
-  if (firstStart || firstEnd) segments.push(`الاستراحة الأولى: ${formatBreakRange(firstStart, firstEnd)}`);
-  if (secondStart || secondEnd) segments.push(`الاستراحة الثانية: ${formatBreakRange(secondStart, secondEnd)}`);
-  return segments.length ? `${segments.join('، ')}.` : 'يتم التنسيق لاحقًا.';
+  if (firstStart || firstEnd) segments.push(`• الاستراحة الأولى: ${formatBreakRange(firstStart, firstEnd)}`);
+  if (secondStart || secondEnd) segments.push(`• الاستراحة الثانية: ${formatBreakRange(secondStart, secondEnd)}`);
+  return segments.length ? segments.join('
+') : '• يتم التنسيق لاحقًا.';
 }
 
 function smartComposeRequest(raw: string, context: 'hospitality' | 'security' | 'medical' | 'support') {
@@ -442,22 +458,22 @@ function buildCoursesTable(courses: CourseRecord[]) {
 function buildSimpleTable(title: string, headers: [string, string], rows: Array<[string, string]>) {
   if (!rows.length) return '';
   return `
-    <div style="margin-top:16px;">
-      <div style="font-weight:700; color:#016564; margin-bottom:8px;">${escapeHtml(title)}</div>
+    <div style="margin-top:16px; text-align:right;">
+      <div style="font-weight:700; color:#016564; margin-bottom:8px; text-align:right;">${escapeHtml(title)}</div>
       <table dir="rtl" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:collapse; font-family:Cairo, Arial, sans-serif; font-size:14px; border:1px solid #d6d7d4;">
         <thead>
           <tr style="background:#016564; color:#ffffff;">
-            <th style="border:1px solid #d6d7d4; padding:10px;">${escapeHtml(headers[0])}</th>
-            <th style="border:1px solid #d6d7d4; padding:10px;">${escapeHtml(headers[1])}</th>
+            <th style="border:1px solid #d6d7d4; padding:8px;">${escapeHtml(headers[0])}</th>
+            <th style="border:1px solid #d6d7d4; padding:8px;">${escapeHtml(headers[1])}</th>
           </tr>
         </thead>
         <tbody>
           ${rows
             .map(
-              ([a, b]) => `
-                <tr>
-                  <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${nl2br(a)}</td>
-                  <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${nl2br(b)}</td>
+              ([a, b], index) => `
+                <tr style="background:${index % 2 === 0 ? '#ffffff' : '#f3f4f6'};">
+                  <td style="border:1px solid #d6d7d4; padding:8px 10px; vertical-align:top; text-align:right;">${nl2br(a)}</td>
+                  <td style="border:1px solid #d6d7d4; padding:8px 10px; vertical-align:top; text-align:right;">${nl2br(b)}</td>
                 </tr>
               `,
             )
@@ -564,14 +580,14 @@ function parseCourseLine(line: string): CourseRecord | null {
   const normalized = normalizeArabicDigits(line.replace(/\u00a0/g, ' ').trim());
   if (!normalized) return null;
 
-  if (normalized.includes('\t')) {
-    const parts = normalized.split('\t').map((part) => part.trim()).filter(Boolean);
+  if (normalized.includes('	')) {
+    const parts = normalized.split('	').map((part) => part.trim()).filter(Boolean);
     if (parts.length >= 6) {
       const dates = parts.filter((part) => /(\d{4}[\/-]\d{1,2}[\/-]\d{1,2}|\d{1,2}[\/-]\d{1,2}[\/-]\d{4})/.test(part));
       const period = parts.find((part) => /صباحي|صباحية|مسائي|مسائية/i.test(part)) || '';
       const participants = parts.find((part) => /^\d+$/.test(part)) || '';
-      const location = [...parts].reverse().find((part) => locations.some((loc) => normalizeHeader(loc) === normalizeHeader(part))) || parts[parts.length - 1] || '';
-      const title = parts[0] || '';
+      const location = [...parts].reverse().map((part) => normalizeLocation(part)).find((part) => locations.includes(part)) || '';
+      const title = parts.find((part) => part && !/(\d{4}[\/-]\d{1,2}[\/-]\d{1,2}|\d{1,2}[\/-]\d{1,2}[\/-]\d{4})/.test(part) && !/صباحي|صباحية|مسائي|مسائية/i.test(part) && !/^\d+$/.test(part) && !/(?:أيام|ايام|يوم|يومان)/.test(part) && !locations.includes(normalizeLocation(part))) || parts[0] || '';
       const record = buildCourseRecord({
         title,
         period,
@@ -664,14 +680,17 @@ function parseRowsFromPastedText(text: string) {
 }
 
 
+function stripLeadingSubjectRow(bodyHtml: string) {
+  return String(bodyHtml || '').replace(/<tr>\s*<td[^>]*>\s*الموضوع:[\s\S]*?<\/td>\s*<\/tr>/, '');
+}
+
 function buildWordDocumentHtml(subject: string, bodyHtml: string) {
+  const cleanedBody = stripLeadingSubjectRow(bodyHtml);
   return `
-  <html dir="rtl" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+  <html dir="rtl" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:office" xmlns="http://www.w3.org/TR/REC-html40">
     <head>
       <meta charset="utf-8" />
       <meta name="ProgId" content="Word.Document" />
-      <meta name="Generator" content="Microsoft Word 15" />
-      <meta name="Originator" content="Microsoft Word 15" />
       <title>${escapeHtml(subject)}</title>
       <!--[if gte mso 9]>
       <xml>
@@ -683,7 +702,7 @@ function buildWordDocumentHtml(subject: string, bodyHtml: string) {
       </xml>
       <![endif]-->
       <style>
-        @page { size: A4; margin: 1.6cm; }
+        @page { size: A4; margin: 1.4cm; }
         body {
           direction: rtl;
           font-family: Cairo, Arial, sans-serif;
@@ -691,74 +710,54 @@ function buildWordDocumentHtml(subject: string, bodyHtml: string) {
           background: #ffffff;
           margin: 0;
           padding: 0;
-          line-height: 1.9;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
+          line-height: 1.85;
+          text-align: right;
         }
         .page-shell {
           width: 100%;
-          max-width: 100%;
-          margin: 0 auto;
           background: #ffffff;
           border: 1px solid #e6dcc8;
-          border-radius: 18px;
-          padding: 22px;
+          border-radius: 14px;
+          padding: 16px 18px;
           box-sizing: border-box;
-        }
-        .hero {
-          margin-bottom: 18px;
-          text-align: right;
-        }
-        .hero img {
-          width: 160px;
-          height: auto;
-          display: inline-block;
-          margin-bottom: 12px;
         }
         .subject {
           color: #016564;
-          font-size: 18pt;
+          font-size: 16pt;
           font-weight: bold;
-          margin: 6px 0 0 0;
+          margin: 0 0 14px 0;
+          text-align: right;
         }
         table {
           width: 100% !important;
           border-collapse: collapse !important;
           table-layout: fixed !important;
-          margin-top: 12px !important;
-          margin-bottom: 14px !important;
-          page-break-inside: auto;
+          margin: 10px 0 12px 0 !important;
         }
-        tr {
-          page-break-inside: avoid;
-          page-break-after: auto;
-        }
+        tr { page-break-inside: avoid; }
         th, td {
           border: 1px solid #d6d7d4 !important;
-          padding: 8px 10px !important;
-          font-size: 11pt !important;
+          padding: 6px 8px !important;
+          font-size: 10.5pt !important;
+          line-height: 1.6 !important;
           vertical-align: middle !important;
-          word-break: break-word !important;
           white-space: normal !important;
+          word-break: break-word !important;
           text-align: center !important;
         }
         th {
           background: #016564 !important;
           color: #ffffff !important;
-          font-weight: bold !important;
+          font-weight: 700 !important;
         }
-        p, div, span, li {
-          font-size: 11.5pt !important;
-        }
+        tbody tr:nth-child(even) td { background: #f3f4f6 !important; }
+        p, div, span, li { font-size: 11pt !important; text-align: right !important; }
       </style>
     </head>
     <body>
       <div class="page-shell">
-        <div class="hero">
-          <img src="${typeof window !== 'undefined' ? `${window.location.origin}/naif-logo.png` : '/naif-logo.png'}" alt="شعار جامعة نايف" />
-          <div class="subject">الموضوع: ${escapeHtml(subject)}</div>
-        </div>
-        ${bodyHtml}
+        <div class="subject">الموضوع: ${escapeHtml(subject)}</div>
+        ${cleanedBody}
       </div>
     </body>
   </html>
@@ -1029,7 +1028,7 @@ export default function HomePage() {
           }
           return label;
         });
-        return [request.place, lines.join('\n')] as [string, string];
+        return [request.place, lines.map((line) => `• ${line}`).join('\n')] as [string, string];
       });
   }
 
@@ -1136,10 +1135,10 @@ export default function HomePage() {
     }
 
     return `
-      <div dir="rtl" style="font-family:Cairo, Arial, sans-serif; color:#1f2937; line-height:1.95; font-size:15px; background:#ffffff;">
+      <div dir="rtl" style="font-family:Cairo, Arial, sans-serif; color:#1f2937; line-height:1.95; font-size:15px; background:#ffffff; text-align:right;">
         <table dir="rtl" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:collapse; font-family:Cairo, Arial, sans-serif;">
           <tr>
-            <td style="padding:0 0 14px 0; font-weight:700; color:#016564;">الموضوع: ${escapeHtml(autoSubject)}</td>
+            <td style="padding:0 0 14px 0; font-weight:700; color:#016564; text-align:right;">الموضوع: ${escapeHtml(autoSubject)}</td>
           </tr>
           <tr>
             <td>
@@ -1147,10 +1146,10 @@ export default function HomePage() {
               ${intro}
               ${coursesTable}
               ${extra}
-              <p style="margin:18px 0 0 0;">${closing}</p>
+              <p style="margin:18px 0 0 0; text-align:right;">${closing}</p>
               <br />
-              <p style="margin:0;">فريق عمل إدارة عمليات التدريب</p>
-              <p style="margin:0;">وكالة الجامعة للتدريب</p>
+              <p style="margin:0; text-align:left;">فريق عمل إدارة عمليات التدريب</p>
+              <p style="margin:0; text-align:left;">وكالة الجامعة للتدريب</p>
             </td>
           </tr>
         </table>
@@ -1332,7 +1331,6 @@ export default function HomePage() {
       link.click();
 
       setSystemNotice('تم تصدير الرسالة كصورة JPG بنجاح.');
-      resetWeeklyForm();
     } catch {
       setSystemNotice('تعذر تصدير الصورة حاليًا.');
     }
@@ -1360,7 +1358,6 @@ export default function HomePage() {
       URL.revokeObjectURL(url);
 
       setSystemNotice('تم تصدير الرسالة كملف Word بنجاح.');
-      resetWeeklyForm();
     } catch {
       setSystemNotice('تعذر تصدير ملف Word حاليًا.');
     }
@@ -1759,8 +1756,8 @@ export default function HomePage() {
                             .poster-html td {
                               border: 1px solid #d6d7d4 !important;
                               padding: 10px 8px !important;
-                              font-size: 22px !important;
-                              line-height: 1.7 !important;
+                              font-size: 20px !important;
+                              line-height: 1.6 !important;
                               vertical-align: middle !important;
                               text-align: center !important;
                               white-space: normal !important;
@@ -1771,15 +1768,19 @@ export default function HomePage() {
                               color: #ffffff !important;
                               font-weight: 800 !important;
                             }
+                            .poster-html tbody tr:nth-child(even) td {
+                              background: #f3f4f6 !important;
+                            }
                             .poster-html p,
                             .poster-html div,
                             .poster-html span {
-                              font-size: 23px !important;
-                              line-height: 1.9 !important;
+                              font-size: 21px !important;
+                              line-height: 1.85 !important;
+                              text-align: right !important;
                             }
                           `}</style>
 
-                          <div className="poster-html" dangerouslySetInnerHTML={{ __html: previewHtml || '' }} />
+                          <div className="poster-html" dangerouslySetInnerHTML={{ __html: stripLeadingSubjectRow(previewHtml || '') }} />
                         </div>
                       </div>
                     </div>
