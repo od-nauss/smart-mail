@@ -41,8 +41,8 @@ const homeModules: Array<{
   },
   {
     key: 'leadership',
-    title: 'المراسلات القيادية',
-    description: 'الاعتمادات والموافقات والرفع القيادي',
+    title: 'مراسلات الإدارة العليا',
+    description: 'الاعتمادات والموافقات والرفع للادارة العليا',
     icon: '📌',
     accent: '#7c1e3e',
   },
@@ -726,25 +726,25 @@ export default function HomePage() {
                 </div>
               </section>
 
-              <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {homeModules.map((module) => (
                   <div
                     key={module.key}
-                    className="rounded-[24px] border border-[#e1e5e5] bg-white p-5 shadow-sm"
+                    className="rounded-[22px] border border-[#e1e5e5] bg-white p-4 shadow-sm"
                   >
-                    <div className="mb-4 flex items-center justify-between">
+                    <div className="mb-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div
-                          className="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl"
+                          className="flex h-11 w-11 items-center justify-center rounded-2xl text-xl"
                           style={{ backgroundColor: `${module.accent}12` }}
                         >
                           {module.icon}
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-[#016564]">
+                          <h3 className="text-base font-semibold text-[#016564]">
                             {module.title}
                           </h3>
-                          <p className="mt-1 text-sm text-[#8c6968]">
+                          <p className="mt-0.5 text-xs text-[#8c6968]">
                             {module.description}
                           </p>
                         </div>
@@ -752,22 +752,22 @@ export default function HomePage() {
                     </div>
 
                     {module.key === 'weekly' ? (
-                      <div className="rounded-2xl border border-[#e7dcc7] bg-[#fbfaf7] p-3">
+                      <div className="rounded-2xl border border-[#e7dcc7] bg-[#fbfaf7] p-2.5">
                         <button
                           type="button"
                           onClick={() => setWeeklyView('form')}
-                          className="group flex w-full items-center justify-between rounded-2xl border border-[#d0b284] bg-white px-5 py-5 text-right transition hover:border-[#016564] hover:shadow-sm"
+                          className="group flex w-full items-center justify-between rounded-2xl border border-[#d0b284] bg-white px-4 py-4 text-right transition hover:border-[#016564] hover:shadow-sm"
                         >
-                          <div className="flex items-center gap-4">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#016564]/10 text-2xl">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#016564]/10 text-xl">
                               📅
                             </div>
 
                             <div>
-                              <div className="text-base font-semibold text-[#016564]">
+                              <div className="text-sm font-semibold text-[#016564]">
                                 تنفيذ الدورات التدريبية
                               </div>
-                              <div className="mt-1 text-sm text-[#8c6968]">
+                              <div className="mt-0.5 text-xs text-[#8c6968]">
                                 نموذج أسبوعي موحد لتبليغ الإدارات المعنية
                               </div>
                             </div>
@@ -775,7 +775,7 @@ export default function HomePage() {
 
                           <div className="text-[#d0b284] transition group-hover:translate-x-[-4px]">
                             <svg
-                              className="h-6 w-6"
+                              className="h-5 w-5"
                               viewBox="0 0 24 24"
                               fill="none"
                               stroke="currentColor"
@@ -785,13 +785,9 @@ export default function HomePage() {
                             </svg>
                           </div>
                         </button>
-
-                        <div className="mt-3 rounded-2xl border border-dashed border-[#d8dfdf] bg-white/70 px-4 py-3 text-sm text-[#8c6968]">
-                          يشمل التبليغ الأسبوعي للإدارات المرتبطة بتنفيذ الدورات داخل الجامعة.
-                        </div>
                       </div>
                     ) : (
-                      <div className="rounded-2xl border border-dashed border-[#d6d7d4] bg-[#fcfdfd] px-4 py-5 text-right">
+                      <div className="rounded-2xl border border-dashed border-[#d6d7d4] bg-[#fcfdfd] px-4 py-4 text-right">
                         <div className="text-sm font-semibold text-[#8c6968]">قريبًا</div>
                       </div>
                     )}
