@@ -706,34 +706,44 @@ function parseCourseLine(line: string): CourseRecord | null {
 
 function parseStructuredPastedRows(text: string) {
   const lines = text
-  .split(/\r?\n/)
-  function parseStructuredPastedRows(text: string) {
-  const lines = text
     .split(/\r?\n/)
     .map((line) => line.replace(/\u00A0/g, ' ').trim())
     .filter(Boolean);
 
-  return lines;
-}
+  if (!lines.length || !lines.some((line) => line.includes('\t'))) return [];
 
-  const rows = lines.map((line) => line.split('	').map((cell) => cell.trim()));
+  const rows = lines
+    .map((line) => line.split('\t').map((cell) => cell.replace(/\u00A0/g, ' ').trim()))
+    .filter((cells) => cells.some((cell) => cell));
+
+  if (!rows.length) return [];
+
   const headerIndex = rows.findIndex((cells) => {
     const line = normalizeHeader(cells.join(' '));
-    return HEADER_CANDIDATES.title.some((candidate) => line.includes(normalizeHeader(candidate)));
+    return (
+      HEADER_CANDIDATES.title.some((candidate) => line.includes(normalizeHeader(candidate))) &&
+      HEADER_CANDIDATES.startDate.some((candidate) => line.includes(normalizeHeader(candidate)))
+    );
   });
 
   if (headerIndex >= 0) {
-    const headers = rows[headerIndex];
-    const dataRows = rows.slice(headerIndex + 1).filter((cells) => cells.some((cell) => cell.trim()));
-    const objects = dataRows.map((cells) => Object.fromEntries(headers.map((header, index) => [header || `col_${index}`, cells[index] || ''])));
+    const headers = rows[headerIndex].map((header, index) => header || `col_${index}`);
+    const dataRows = rows.slice(headerIndex + 1).filter((cells) => cells.some((cell) => cell));
+    const objects = dataRows.map((cells) =>
+      Object.fromEntries(headers.map((header, index) => [header, cells[index] || '']))
+    );
     return parseSheetRows(objects);
   }
 
-  const wideRows = rows.filter((cells) => cells.filter((cell) => cell.trim()).length >= 20);
-  if (!wideRows.length) return [];
+  const likelyLmsRows = rows.filter((cells) => cells.filter(Boolean).length >= 20);
+  if (likelyLmsRows.length) {
+    const objects = likelyLmsRows.map((cells) =>
+      Object.fromEntries(DEFAULT_LMS_HEADERS.map((header, index) => [header, cells[index] || '']))
+    );
+    return parseSheetRows(objects);
+  }
 
-  const objects = wideRows.map((cells) => Object.fromEntries(DEFAULT_LMS_HEADERS.map((header, index) => [header, cells[index] || ''])));
-  return parseSheetRows(objects);
+  return [];
 }
 
 function parseRowsFromPastedText(text: string) {
@@ -821,6 +831,61 @@ function buildWordDocumentHtml(subject: string, bodyHtml: string) {
     </body>
   </html>
   `;
+}
+
+function encodeMimeWord(value: string) {
+  const utf8 = typeof window !== 'undefined'
+    ? window.btoa(unescape(encodeURIComponent(value)))
+    : Buffer.from(value, 'utf8').toString('base64');
+  return `=?UTF-8?B?${utf8}?=`;
+}
+
+function wrapBase64(value: string, chunkSize = 76) {
+  const chunks: string[] = [];
+  for (let i = 0; i < value.length; i += chunkSize) {
+    chunks.push(value.slice(i, i + chunkSize));
+  }
+  return chunks.join('\r\n');
+}
+
+function buildDraftHtmlDocument(subject: string, bodyHtml: string) {
+  const cleanedBody = stripLeadingSubjectRow(bodyHtml).replace(/text-align:center/gi, 'text-align:right');
+  return `<!DOCTYPE html>
+  <html dir="rtl" lang="ar">
+    <head>
+      <meta charset="utf-8" />
+      <title>${escapeHtml(subject)}</title>
+      <style>
+        body { direction: rtl; font-family: Cairo, Arial, sans-serif; color: #1f2937; margin: 0; padding: 18px; background: #ffffff; }
+        table { width: 100% !important; border-collapse: collapse !important; table-layout: fixed !important; }
+        th, td { border: 1px solid #d6d7d4 !important; padding: 8px 10px !important; vertical-align: top !important; }
+        th { background: #016564 !important; color: #ffffff !important; font-weight: 700 !important; }
+      </style>
+    </head>
+    <body>${cleanedBody}</body>
+  </html>`;
+}
+
+function buildOutlookDraftEml(to: string, cc: string, subject: string, bodyHtml: string) {
+  const html = buildDraftHtmlDocument(subject, bodyHtml);
+  const encodedHtml = typeof window !== 'undefined'
+    ? window.btoa(unescape(encodeURIComponent(html)))
+    : Buffer.from(html, 'utf8').toString('base64');
+
+  const lines = [
+    `To: ${to}`,
+    cc.trim() ? `Cc: ${cc}` : '',
+    `Subject: ${encodeMimeWord(subject)}`,
+    'MIME-Version: 1.0',
+    'X-Unsent: 1',
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrapBase64(encodedHtml),
+    '',
+  ].filter(Boolean);
+
+  return lines.join('\r\n');
 }
 
 function buildDraftWindowHtml(to: string, cc: string, subject: string, bodyHtml: string) {
@@ -1479,23 +1544,24 @@ export default function HomePage() {
     }
 
     if (!previewHtml) {
-      setSystemNotice('أكمل بيانات الرسالة أولًا حتى يتم إنشاء النسخة البريدية المنسقة.');
+      setSystemNotice('أكمل بيانات الرسالة أولًا حتى يتم إنشاء مسودة البريد المنسقة.');
       return;
     }
 
     try {
-      const html = buildDraftWindowHtml(selectedDeptData.emailTo, cc, autoSubject, previewHtml);
-      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const eml = buildOutlookDraftEml(selectedDeptData.emailTo, cc, autoSubject, previewHtml);
+      const blob = new Blob([eml], { type: 'message/rfc822;charset=utf-8' });
       const url = URL.createObjectURL(blob);
-      const draftWindow = window.open(url, '_blank');
-      if (!draftWindow) {
-        URL.revokeObjectURL(url);
-        setSystemNotice('تعذر فتح النسخة البريدية المنسقة. تأكد من السماح بالنوافذ المنبثقة.');
-        return;
-      }
-      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${autoSubject || 'smart-mail'}.eml`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setSystemNotice('تم تنزيل مسودة Outlook بصيغة EML. افتح الملف في Outlook وستظهر الرسالة كمسودة منسقة.');
     } catch {
-      setSystemNotice('تعذر فتح النسخة البريدية المنسقة حاليًا.');
+      setSystemNotice('تعذر إنشاء مسودة Outlook حاليًا.');
     }
   }
 
@@ -1986,7 +2052,7 @@ export default function HomePage() {
                       </button>
                       <button onClick={saveToArchive} type="button" className="rounded-xl bg-[#016564] px-4 py-3 text-sm font-semibold text-white">حفظ في الأرشيف</button>
                       <button onClick={exportAsWord} type="button" className="rounded-xl border border-[#d0b284] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">تصدير Word</button>
-                      <button onClick={openDraft} type="button" className="rounded-xl border border-[#d6d7d4] bg-[#f8f9f9] px-4 py-3 text-sm font-semibold text-[#016564]">فتح مسودة بريد</button>
+                      <button onClick={openDraft} type="button" className="rounded-xl border border-[#d6d7d4] bg-[#f8f9f9] px-4 py-3 text-sm font-semibold text-[#016564]">تنزيل مسودة Outlook</button>
                       <button onClick={exportAsJpg} type="button" className="rounded-xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">تصدير JPG</button>
                     </div>
                   </div>
