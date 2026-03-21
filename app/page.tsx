@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { toJpeg } from 'html-to-image';
 import * as XLSX from 'xlsx';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -36,6 +37,32 @@ type HospitalityRequest = {
   vipCount: string;
 };
 
+type WeeklySnapshot = {
+  selectedDepartment: DepartmentKey | null;
+  cc: string;
+  startDate: string;
+  courses: CourseRecord[];
+  enableMorningBreaks: boolean;
+  enableEveningBreaks: boolean;
+  morningBreak1Start: string;
+  morningBreak1End: string;
+  morningBreak2Start: string;
+  morningBreak2End: string;
+  eveningBreak1Start: string;
+  eveningBreak1End: string;
+  eveningBreak2Start: string;
+  eveningBreak2End: string;
+  hospitalityRequests: HospitalityRequest[];
+  hospitalityExtra: string;
+  securitySelections: string[];
+  securityOther: string;
+  securityGate: string;
+  attachmentsRequired: boolean;
+  medicalExtra: string;
+  supportSelections: string[];
+  supportOther: string;
+};
+
 type ArchiveRecord = {
   id: string;
   department: DepartmentKey;
@@ -45,9 +72,12 @@ type ArchiveRecord = {
   createdAt: string;
   weekLabel: string;
   startDate: string;
+  label: string;
+  snapshot?: WeeklySnapshot;
 };
 
-const ARCHIVE_KEY = 'smart-mail-weekly-archive-v1';
+const ARCHIVE_KEY = 'smart-mail-weekly-archive-v2';
+const ARCHIVE_PASSWORD = 'Nn@123123';
 
 const homeModules: Array<{
   key: HomeModuleKey;
@@ -168,6 +198,15 @@ const HEADER_CANDIDATES = {
   endDate: ['تاريخ النهاية', 'تاريخ الانتهاء', 'نهاية التنفيذ', 'نهاية الدورة', 'إلى', 'تاريخ الختام'],
   location: ['مكان التنفيذ', 'مقر التنفيذ', 'الموقع', 'موقع التنفيذ', 'القاعة', 'مكان الانعقاد'],
 };
+
+const lmsLocationHints: Array<{ pattern: RegExp; value: string }> = [
+  { pattern: /مركز\s*السلامة\s*المرورية/i, value: 'مركز السلامة المرورية' },
+  { pattern: /مركز\s*الأمن\s*السيبراني/i, value: 'مركز الأمن السيبراني' },
+  { pattern: /مركز\s*الذكاء\s*الاصطناعي/i, value: 'مركز الذكاء الاصطناعي' },
+  { pattern: /النادي\s*الرياضي/i, value: 'النادي الرياضي' },
+  { pattern: /vr/i, value: 'قاعة VR' },
+  { pattern: /خبير/i, value: 'معمل خبير' },
+];
 
 function pad2(value: number) {
   return String(value).padStart(2, '0');
@@ -314,11 +353,17 @@ function formatTimeArabic(value: string) {
   return `${pad2(hour12)}:${pad2(minutes)} ${suffix}`;
 }
 
-function buildBreakSentence(first: string, second: string) {
-  if (!first && !second) return 'يتم التنسيق لاحقًا.';
-  if (first && second) return `الاستراحة الأولى: ${formatTimeArabic(first)}، والاستراحة الثانية: ${formatTimeArabic(second)}.`;
-  if (first) return `الاستراحة الأولى: ${formatTimeArabic(first)}.`;
-  return `الاستراحة الثانية: ${formatTimeArabic(second)}.`;
+function formatBreakRange(start: string, end: string) {
+  if (!start && !end) return '';
+  if (start && end) return `${formatTimeArabic(start)} إلى ${formatTimeArabic(end)}`;
+  return start ? formatTimeArabic(start) : formatTimeArabic(end);
+}
+
+function buildBreakSentence(firstStart: string, firstEnd: string, secondStart: string, secondEnd: string) {
+  const segments = [];
+  if (firstStart || firstEnd) segments.push(`الاستراحة الأولى: ${formatBreakRange(firstStart, firstEnd)}`);
+  if (secondStart || secondEnd) segments.push(`الاستراحة الثانية: ${formatBreakRange(secondStart, secondEnd)}`);
+  return segments.length ? `${segments.join('، ')}.` : 'يتم التنسيق لاحقًا.';
 }
 
 function smartComposeRequest(raw: string, context: 'hospitality' | 'security' | 'medical' | 'support') {
@@ -326,18 +371,18 @@ function smartComposeRequest(raw: string, context: 'hospitality' | 'security' | 
   if (!value) return '';
 
   if (context === 'medical') {
-    return `كما نأمل من سعادتكم التكرم بـ${value}، واتخاذ ما يلزم من ترتيبات وقائية واستعدادية بما يضمن الجاهزية الطبية الملائمة طوال فترة التنفيذ.`;
+    return `نأمل من سعادتكم التكرم بـ${value}، واتخاذ ما يلزم من ترتيبات وقائية واستعدادية تكفل الجاهزية الطبية الملائمة وسرعة الاستجابة طوال فترة التنفيذ.`;
   }
 
   if (context === 'security') {
-    return `ونأمل من سعادتكم التكرم بـ${value}، والتنسيق بما يكفل انسيابية الدخول والتنظيم الميداني ورفع الجاهزية الأمنية طوال فترة التنفيذ.`;
+    return `نأمل من سعادتكم التفضل بـ${value}، وتعزيز التنسيق الميداني بما يضمن انسيابية الدخول، ودقة التحقق، ورفع مستوى الجاهزية الأمنية خلال فترة التنفيذ.`;
   }
 
   if (context === 'support') {
-    return `ونأمل من سعادتكم التكرم بـ${value}، واستكمال ما يلزم من أعمال دعم وتجهيز ومتابعة بما يحافظ على جاهزية البيئة التدريبية وجودة مظهرها التشغيلي.`;
+    return `نأمل من سعادتكم التكرم بـ${value}، واستكمال ما يلزم من أعمال الدعم والمتابعة بما يحافظ على جاهزية البيئة التدريبية وجودتها التشغيلية على الوجه المأمول.`;
   }
 
-  return `كما نأمل من سعادتكم التكرم بـ${value}، واستكمال الترتيبات المناسبة وفق متطلبات التنفيذ المعتمدة خلال الفترة المحددة.`;
+  return `كما نأمل من سعادتكم التكرم بـ${value}، واستكمال الترتيبات اللازمة بما ينسجم مع متطلبات التنفيذ المعتمدة ويعكس المستوى اللائق بخدمات الجامعة.`;
 }
 
 function toPlainText(html: string) {
@@ -443,8 +488,30 @@ function normalizePeriod(value: string) {
 function normalizeLocation(value: string) {
   const raw = String(value || '').trim();
   if (!raw) return '';
-  const found = locations.find((item) => normalizeHeader(item) === normalizeHeader(raw));
-  return found || raw;
+  const normalizedRaw = normalizeHeader(raw);
+
+  const direct = locations.find((item) => normalizeHeader(item) === normalizedRaw);
+  if (direct) return direct;
+
+  const classMatch = raw.match(/(?:class|قاعة|داخل)\s*(\d)/i);
+  if (classMatch) {
+    const classValue = `CLASS ${classMatch[1]}`;
+    if (locations.includes(classValue)) return classValue;
+  }
+
+  const labMatch = raw.match(/(?:lab|معمل)\s*(\d)/i);
+  if (labMatch) {
+    const labValue = `LAB ${labMatch[1]}`;
+    if (locations.includes(labValue)) return labValue;
+  }
+
+  for (const hint of lmsLocationHints) {
+    if (hint.pattern.test(raw)) return hint.value;
+  }
+
+  if (/خارجي|خارج الجامعة|خارج/i.test(raw)) return 'خارجي';
+
+  return raw;
 }
 
 function buildCourseRecord(input: {
@@ -550,7 +617,32 @@ function parseCourseLine(line: string): CourseRecord | null {
   return buildCourseRecord({ title, period, participants, startDate, endDate, location: locationMatch.loc });
 }
 
+function parseStructuredPastedRows(text: string) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\u00a0/g, ''))
+    .filter((line) => line.trim());
+
+  if (!lines.length || !lines.some((line) => line.includes('\t'))) return [];
+
+  const rows = lines.map((line) => line.split('\t').map((cell) => cell.trim()));
+  const headerIndex = rows.findIndex((cells) => {
+    const line = normalizeHeader(cells.join(' '));
+    return HEADER_CANDIDATES.title.some((candidate) => line.includes(normalizeHeader(candidate)));
+  });
+
+  if (headerIndex < 0) return [];
+
+  const headers = rows[headerIndex];
+  const dataRows = rows.slice(headerIndex + 1).filter((cells) => cells.some((cell) => cell.trim()));
+  const objects = dataRows.map((cells) => Object.fromEntries(headers.map((header, index) => [header || `col_${index}`, cells[index] || ''])));
+  return parseSheetRows(objects);
+}
+
 function parseRowsFromPastedText(text: string) {
+  const structured = parseStructuredPastedRows(text);
+  if (structured.length) return structured;
+
   const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
   const records: CourseRecord[] = [];
 
@@ -596,10 +688,21 @@ export default function HomePage() {
 
   const [enableMorningBreaks, setEnableMorningBreaks] = useState(true);
   const [enableEveningBreaks, setEnableEveningBreaks] = useState(false);
-  const [morningBreak1, setMorningBreak1] = useState('09:45');
-  const [morningBreak2, setMorningBreak2] = useState('11:45');
-  const [eveningBreak1, setEveningBreak1] = useState('17:00');
-  const [eveningBreak2, setEveningBreak2] = useState('18:10');
+  const [morningBreak1Start, setMorningBreak1Start] = useState('09:45');
+  const [morningBreak1End, setMorningBreak1End] = useState('10:00');
+  const [morningBreak2Start, setMorningBreak2Start] = useState('11:45');
+  const [morningBreak2End, setMorningBreak2End] = useState('12:00');
+  const [eveningBreak1Start, setEveningBreak1Start] = useState('17:00');
+  const [eveningBreak1End, setEveningBreak1End] = useState('17:15');
+  const [eveningBreak2Start, setEveningBreak2Start] = useState('18:10');
+  const [eveningBreak2End, setEveningBreak2End] = useState('18:25');
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [archivePassword, setArchivePassword] = useState('');
+  const [archiveUnlocked, setArchiveUnlocked] = useState(false);
+  const [fileInputKey, setFileInputKey] = useState(0);
+  const [importSummary, setImportSummary] = useState('');
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const posterRef = useRef<HTMLDivElement | null>(null);
   const [hospitalityRequests, setHospitalityRequests] = useState<HospitalityRequest[]>([createEmptyHospitalityRequest()]);
   const [hospitalityExtra, setHospitalityExtra] = useState('');
 
@@ -637,6 +740,45 @@ export default function HomePage() {
   function persistArchive(records: ArchiveRecord[]) {
     setArchiveRecords(records);
     localStorage.setItem(ARCHIVE_KEY, JSON.stringify(records));
+  }
+
+  function resetWeeklyForm() {
+    setSelectedDepartment(null);
+    setCc('');
+    setStartDate('');
+    setCourses([]);
+    setFileName('');
+    setPastedText('');
+    setImportSummary('');
+    setEditingIndex(null);
+    setEnableMorningBreaks(true);
+    setEnableEveningBreaks(false);
+    setMorningBreak1Start('09:45');
+    setMorningBreak1End('10:00');
+    setMorningBreak2Start('11:45');
+    setMorningBreak2End('12:00');
+    setEveningBreak1Start('17:00');
+    setEveningBreak1End('17:15');
+    setEveningBreak2Start('18:10');
+    setEveningBreak2End('18:25');
+    setHospitalityRequests([createEmptyHospitalityRequest()]);
+    setHospitalityExtra('');
+    setSecuritySelections([]);
+    setSecurityOther('');
+    setSecurityGate('4');
+    setAttachmentsRequired(true);
+    setMedicalExtra('');
+    setSupportSelections([]);
+    setSupportOther('');
+    setCourseForm({
+      title: '',
+      period: 'صباحية',
+      participants: '',
+      startDate: '',
+      endDate: '',
+      location: locations[0],
+    });
+    setFileInputKey((prev) => prev + 1);
   }
 
   function resetCourseForm() {
@@ -689,16 +831,23 @@ export default function HomePage() {
       const validRows = parseSheetRows(rows);
 
       if (!validRows.length) {
-        setSystemNotice('لم يتم التقاط الأعمدة المطلوبة من ملف LMS. تأكد من أن الملف يحتوي على: اسم الدورة، الفترة، عدد المتدربين، تاريخ البداية، تاريخ النهاية، مكان التنفيذ.');
+        setImportSummary('');
+        setSystemNotice('لم يتم التقاط الأعمدة المطلوبة من ملف LMS. تأكد من أن الملف يحتوي على: اسم الدورة باللغة العربية، الفترة، عدد المتدربين، تاريخ البداية، تاريخ النهاية، مكان التنفيذ.');
+        setFileInputKey((prev) => prev + 1);
         return;
       }
 
       setCourses(validRows);
       setFileName(file.name);
-      if (!startDate && validRows[0]?.startDate) setStartDate(validRows[0].startDate);
+      setImportSummary(`تم استيراد ${validRows.length} دورة من الملف: ${file.name}`);
+      setFileInputKey((prev) => prev + 1);
+      setPastedText('');
+      setEditingIndex(null);
+      setStartDate(validRows[0]?.startDate || '');
       setSystemNotice(`تم استيراد ${validRows.length} دورة بنجاح.`);
     } catch {
       setSystemNotice('تعذر قراءة ملف Excel.');
+      setFileInputKey((prev) => prev + 1);
     }
   }
 
@@ -709,7 +858,9 @@ export default function HomePage() {
       return;
     }
     setCourses(rows);
-    if (!startDate && rows[0]?.startDate) setStartDate(rows[0].startDate);
+    setFileName('');
+    setImportSummary(`تم تحويل النص الذكي إلى ${rows.length} دورة.`);
+    setStartDate(rows[0]?.startDate || '');
     setSystemNotice(`تم تحويل النص إلى ${rows.length} دورة.`);
   }
 
@@ -817,22 +968,21 @@ export default function HomePage() {
       intro = `
         <p style="margin:0 0 12px 0;">السلام عليكم ورحمة الله وبركاته، وبعد:</p>
         <p style="margin:0 0 12px 0;">
-          تهديكم إدارة عمليات التدريب بوكالة الجامعة للتدريب أطيب التحايا، وتود الإحاطة بأنه تقرر تنفيذ عدد (${courses.length}) دورات تدريبية خلال ${escapeHtml(weekLabel || 'الأسبوع القادم')} ${formattedStartDate ? `ابتداءً من ${escapeHtml(formattedStartDate)}` : ''}، وذلك وفق البيانات التالية:
+          تهديكم إدارة عمليات التدريب بوكالة الجامعة للتدريب أطيب التحايا، وتود الإحاطة بأنه تقرر تنفيذ عدد (${courses.length}) دورات تدريبية خلال ${escapeHtml(weekLabel || 'الأسبوع القادم')} ${formattedStartDate ? `ابتداءً من ${escapeHtml(formattedStartDate)}` : ''}، وعليه نأمل التكرم بالاطلاع واتخاذ ما يلزم من ترتيبات مساندة وفق البيان الآتي:
         </p>
       `;
 
       const breakRows: Array<[string, string]> = [];
-      if (enableMorningBreaks) breakRows.push(['الدورات الصباحية', buildBreakSentence(morningBreak1, morningBreak2)]);
-      if (enableEveningBreaks) breakRows.push(['الدورات المسائية', buildBreakSentence(eveningBreak1, eveningBreak2)]);
+      if (enableMorningBreaks) breakRows.push(['الدورات الصباحية', buildBreakSentence(morningBreak1Start, morningBreak1End, morningBreak2Start, morningBreak2End)]);
+      if (enableEveningBreaks) breakRows.push(['الدورات المسائية', buildBreakSentence(eveningBreak1Start, eveningBreak1End, eveningBreak2Start, eveningBreak2End)]);
 
       const hospitalityRows = buildHospitalityRows();
-      if (hospitalityExtra.trim()) {
-        hospitalityRows.push(['متطلبات تشغيلية إضافية', smartComposeRequest(hospitalityExtra, 'hospitality')]);
-      }
+      const hospitalityExtraText = hospitalityExtra.trim() ? `<p style="margin:16px 0 0 0;">${escapeHtml(smartComposeRequest(hospitalityExtra, 'hospitality'))}</p>` : '';
 
       extra = `
         ${buildSimpleTable('أوقات الاستراحة المعتمدة', ['الفترة', 'التوقيت'], breakRows)}
         ${buildSimpleTable('الطلبات المطلوب تأمينها خلال فترات الاستراحة', ['المكان', 'العناصر المطلوبة'], hospitalityRows)}
+        ${hospitalityExtraText}
       `;
     }
 
@@ -841,7 +991,7 @@ export default function HomePage() {
       intro = `
         <p style="margin:0 0 12px 0;">السلام عليكم ورحمة الله وبركاته، وبعد:</p>
         <p style="margin:0 0 12px 0;">
-          تهديكم إدارة عمليات التدريب بوكالة الجامعة للتدريب أطيب التحايا، وتفيدكم بأنه سيجري تنفيذ عدد (${courses.length}) دورات تدريبية داخل مقر الجامعة ${formattedStartDate ? `ابتداءً من ${escapeHtml(formattedStartDate)}` : ''}، ونأمل دعم الجاهزية الأمنية والتنظيمية وفق الآتي:
+          تهديكم إدارة عمليات التدريب بوكالة الجامعة للتدريب أطيب التحايا، وتفيدكم بأنه سيجري تنفيذ عدد (${courses.length}) دورات تدريبية داخل مقر الجامعة ${formattedStartDate ? `ابتداءً من ${escapeHtml(formattedStartDate)}` : ''}، ونأمل من سعادتكم التكرم بدعم الجاهزية الأمنية والتنظيمية اللازمة وفق الآتي:
         </p>
       `;
       extra = `
@@ -855,7 +1005,7 @@ export default function HomePage() {
       intro = `
         <p style="margin:0 0 12px 0;">السلام عليكم ورحمة الله وبركاته، وبعد:</p>
         <p style="margin:0 0 12px 0;">
-          تهديكم إدارة عمليات التدريب بوكالة الجامعة للتدريب أطيب التحايا، وتفيدكم بأنه سيجري تنفيذ عدد من الدورات التدريبية داخل مقر الجامعة ${formattedStartDate ? `ابتداءً من ${escapeHtml(formattedStartDate)}` : ''}، وفق الجدول الآتي:
+          تهديكم إدارة عمليات التدريب بوكالة الجامعة للتدريب أطيب التحايا، وتفيدكم بأنه سيجري تنفيذ عدد من الدورات التدريبية داخل مقر الجامعة ${formattedStartDate ? `ابتداءً من ${escapeHtml(formattedStartDate)}` : ''}، ونأمل التكرم بالإحاطة ورفع الجاهزية الطبية المساندة وفق الجدول الآتي:
         </p>
       `;
       extra = `
@@ -874,7 +1024,7 @@ export default function HomePage() {
       intro = `
         <p style="margin:0 0 12px 0;">السلام عليكم ورحمة الله وبركاته، وبعد:</p>
         <p style="margin:0 0 12px 0;">
-          تهديكم إدارة عمليات التدريب بوكالة الجامعة للتدريب أطيب التحايا، وتفيدكم بأنه سيتم تنفيذ عدد من الدورات التدريبية خلال ${escapeHtml(weekLabel || 'الأسبوع القادم')}، ونأمل التكرم باستكمال أعمال الدعم المساندة وفق الجدول التالي:
+          تهديكم إدارة عمليات التدريب بوكالة الجامعة للتدريب أطيب التحايا، وتفيدكم بأنه سيتم تنفيذ عدد من الدورات التدريبية خلال ${escapeHtml(weekLabel || 'الأسبوع القادم')}، ونأمل التكرم باستكمال أعمال الدعم المساندة وتهيئة البيئة التشغيلية وفق الجدول التالي:
         </p>
       `;
       extra = `
@@ -916,10 +1066,14 @@ export default function HomePage() {
       formattedStartDate,
       enableMorningBreaks,
       enableEveningBreaks,
-      morningBreak1,
-      morningBreak2,
-      eveningBreak1,
-      eveningBreak2,
+      morningBreak1Start,
+      morningBreak1End,
+      morningBreak2Start,
+      morningBreak2End,
+      eveningBreak1Start,
+      eveningBreak1End,
+      eveningBreak2Start,
+      eveningBreak2End,
       hospitalityRequests,
       hospitalityExtra,
       securitySelections,
@@ -947,7 +1101,8 @@ export default function HomePage() {
       } else {
         await navigator.clipboard.writeText(toPlainText(previewHtml));
       }
-      setSystemNotice('تم نسخ الرسالة.');
+      setSystemNotice('تم نسخ الرسالة بنجاح، وتم تهيئة النموذج لرسالة جديدة.');
+      resetWeeklyForm();
     } catch {
       setSystemNotice('تعذر نسخ الرسالة.');
     }
@@ -967,6 +1122,34 @@ export default function HomePage() {
       setSystemNotice('أكمل البيانات أولًا ثم احفظ النسخة.');
       return;
     }
+
+    const deptTitle = departments.find((item) => item.key === selectedDepartment)?.title || '';
+    const snapshot: WeeklySnapshot = {
+      selectedDepartment,
+      cc,
+      startDate,
+      courses,
+      enableMorningBreaks,
+      enableEveningBreaks,
+      morningBreak1Start,
+      morningBreak1End,
+      morningBreak2Start,
+      morningBreak2End,
+      eveningBreak1Start,
+      eveningBreak1End,
+      eveningBreak2Start,
+      eveningBreak2End,
+      hospitalityRequests,
+      hospitalityExtra,
+      securitySelections,
+      securityOther,
+      securityGate,
+      attachmentsRequired,
+      medicalExtra,
+      supportSelections,
+      supportOther,
+    };
+
     const record: ArchiveRecord = {
       id: `a-${Date.now()}`,
       department: selectedDepartment,
@@ -976,16 +1159,48 @@ export default function HomePage() {
       createdAt: new Date().toISOString(),
       weekLabel: weekLabel || 'غير محدد',
       startDate,
+      label: `${weekLabel || 'غير محدد'} - ${deptTitle}`,
+      snapshot,
     };
+
     const next = [record, ...archiveRecords].slice(0, 25);
     persistArchive(next);
     setSystemNotice('تم حفظ الرسالة في الأرشيف.');
   }
 
   function loadFromArchive(record: ArchiveRecord) {
-    setSelectedDepartment(record.department);
-    if (record.startDate) setStartDate(record.startDate);
-    setSystemNotice(`تم استدعاء نسخة ${record.weekLabel}.`);
+    const snapshot = record.snapshot;
+    if (snapshot) {
+      setSelectedDepartment(snapshot.selectedDepartment);
+      setCc(snapshot.cc);
+      setStartDate(snapshot.startDate);
+      setCourses(snapshot.courses);
+      setEnableMorningBreaks(snapshot.enableMorningBreaks);
+      setEnableEveningBreaks(snapshot.enableEveningBreaks);
+      setMorningBreak1Start(snapshot.morningBreak1Start);
+      setMorningBreak1End(snapshot.morningBreak1End);
+      setMorningBreak2Start(snapshot.morningBreak2Start);
+      setMorningBreak2End(snapshot.morningBreak2End);
+      setEveningBreak1Start(snapshot.eveningBreak1Start);
+      setEveningBreak1End(snapshot.eveningBreak1End);
+      setEveningBreak2Start(snapshot.eveningBreak2Start);
+      setEveningBreak2End(snapshot.eveningBreak2End);
+      setHospitalityRequests(snapshot.hospitalityRequests);
+      setHospitalityExtra(snapshot.hospitalityExtra);
+      setSecuritySelections(snapshot.securitySelections);
+      setSecurityOther(snapshot.securityOther);
+      setSecurityGate(snapshot.securityGate);
+      setAttachmentsRequired(snapshot.attachmentsRequired);
+      setMedicalExtra(snapshot.medicalExtra);
+      setSupportSelections(snapshot.supportSelections);
+      setSupportOther(snapshot.supportOther);
+    } else {
+      setSelectedDepartment(record.department);
+      if (record.startDate) setStartDate(record.startDate);
+    }
+    setShowArchiveModal(false);
+    setWeeklyView('form');
+    setSystemNotice(`تم استدعاء نسخة ${record.label}.`);
   }
 
   function deleteArchiveRecord(id: string) {
@@ -993,9 +1208,30 @@ export default function HomePage() {
     setSystemNotice('تم حذف النسخة من الأرشيف.');
   }
 
+  async function exportAsJpg() {
+    if (!posterRef.current || !previewHtml) {
+      setSystemNotice('أكمل المعاينة أولًا قبل التصدير.');
+      return;
+    }
+
+    try {
+      const dataUrl = await toJpeg(posterRef.current, { quality: 0.96, pixelRatio: 2, cacheBust: true, backgroundColor: '#f8f9f9' });
+      const link = document.createElement('a');
+      link.download = `${autoSubject || 'smart-mail'}.jpg`;
+      link.href = dataUrl;
+      link.click();
+      setSystemNotice('تم تصدير الرسالة كصورة JPG بنجاح، وتم تهيئة النموذج لرسالة جديدة.');
+      resetWeeklyForm();
+    } catch {
+      setSystemNotice('تعذر تصدير الصورة حاليًا.');
+    }
+  }
+
+  const visibleArchiveRecords = archiveUnlocked ? archiveRecords : [];
+
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f9f9]">
-      <Header />
+      <Header onArchiveClick={() => setShowArchiveModal(true)} />
 
       <main className="flex-1 py-6">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -1062,7 +1298,7 @@ export default function HomePage() {
                   <h2 className="text-2xl font-semibold text-[#016564]">المراسلات الأسبوعية</h2>
                   <p className="mt-1 text-sm text-[#8c6968]">تنفيذ الدورات التدريبية</p>
                 </div>
-                <button type="button" onClick={() => setWeeklyView('home')} className="rounded-xl border border-[#d6d7d4] bg-white px-4 py-2 text-sm font-semibold text-[#016564]">
+                <button type="button" onClick={() => { resetWeeklyForm(); setWeeklyView('home'); }} className="rounded-xl border border-[#d6d7d4] bg-white px-4 py-2 text-sm font-semibold text-[#016564]">
                   العودة للرئيسية
                 </button>
               </div>
@@ -1132,10 +1368,11 @@ export default function HomePage() {
                     {inputMode === 'excel' && (
                       <div className="rounded-2xl border border-[#e6e9e9] p-4">
                         <label className="mb-1 block text-sm text-gray-600">ملف Excel الرئيسي</label>
-                        <input type="file" accept=".xlsx,.xls" onChange={(e) => e.target.files?.[0] && handleExcelUpload(e.target.files[0])} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" />
+                        <input key={fileInputKey} type="file" accept=".xlsx,.xls" onChange={(e) => e.target.files?.[0] && handleExcelUpload(e.target.files[0])} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" />
                         <div className="mt-2 flex flex-wrap gap-2">
                           <button type="button" onClick={downloadExcelTemplate} className="rounded-xl border border-[#d0b284] bg-white px-3 py-2 text-sm text-[#016564]">تنزيل نموذج Excel</button>
-                          {fileName ? <div className="text-sm text-[#016564]">تم رفع: {fileName}</div> : null}
+                          {fileName ? <div className="text-sm text-[#016564]">الملف الحالي: {fileName}</div> : null}
+                          {importSummary ? <div className="text-xs font-medium text-[#498983]">{importSummary}</div> : null}
                         </div>
                         <div className="mt-2 text-xs text-[#8c6968]">الأعمدة التي تلتقطها المنصة تلقائيًا من LMS: اسم الدورة باللغة العربية | الفترة | عدد المتدربين | تاريخ البداية | تاريخ النهاية | مكان التنفيذ</div>
                       </div>
@@ -1239,11 +1476,11 @@ export default function HomePage() {
                           <div className="space-y-4">
                             <div className="rounded-2xl border border-[#eef1f1] p-3">
                               <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#016564]"><input type="checkbox" checked={enableMorningBreaks} onChange={(e) => setEnableMorningBreaks(e.target.checked)} />دورات صباحية</label>
-                              {enableMorningBreaks ? <div className="grid gap-3 sm:grid-cols-2"><div><label className="mb-1 block text-sm text-gray-600">الاستراحة الأولى</label><input type="time" value={morningBreak1} onChange={(e) => setMorningBreak1(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" /></div><div><label className="mb-1 block text-sm text-gray-600">الاستراحة الثانية</label><input type="time" value={morningBreak2} onChange={(e) => setMorningBreak2(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" /></div></div> : null}
+                              {enableMorningBreaks ? <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-2xl border border-[#eef1f1] p-3"><div className="mb-2 text-sm font-semibold text-[#8c6968]">الاستراحة الأولى</div><div className="grid gap-2 sm:grid-cols-2"><div><label className="mb-1 block text-xs text-gray-500">وقت البداية</label><input type="time" value={morningBreak1Start} onChange={(e) => setMorningBreak1Start(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" /></div><div><label className="mb-1 block text-xs text-gray-500">وقت النهاية</label><input type="time" value={morningBreak1End} onChange={(e) => setMorningBreak1End(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" /></div></div></div><div className="rounded-2xl border border-[#eef1f1] p-3"><div className="mb-2 text-sm font-semibold text-[#8c6968]">الاستراحة الثانية</div><div className="grid gap-2 sm:grid-cols-2"><div><label className="mb-1 block text-xs text-gray-500">وقت البداية</label><input type="time" value={morningBreak2Start} onChange={(e) => setMorningBreak2Start(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" /></div><div><label className="mb-1 block text-xs text-gray-500">وقت النهاية</label><input type="time" value={morningBreak2End} onChange={(e) => setMorningBreak2End(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" /></div></div></div></div> : null}
                             </div>
                             <div className="rounded-2xl border border-[#eef1f1] p-3">
                               <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#016564]"><input type="checkbox" checked={enableEveningBreaks} onChange={(e) => setEnableEveningBreaks(e.target.checked)} />دورات مسائية</label>
-                              {enableEveningBreaks ? <div className="grid gap-3 sm:grid-cols-2"><div><label className="mb-1 block text-sm text-gray-600">الاستراحة الأولى</label><input type="time" value={eveningBreak1} onChange={(e) => setEveningBreak1(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" /></div><div><label className="mb-1 block text-sm text-gray-600">الاستراحة الثانية</label><input type="time" value={eveningBreak2} onChange={(e) => setEveningBreak2(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" /></div></div> : null}
+                              {enableEveningBreaks ? <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-2xl border border-[#eef1f1] p-3"><div className="mb-2 text-sm font-semibold text-[#8c6968]">الاستراحة الأولى</div><div className="grid gap-2 sm:grid-cols-2"><div><label className="mb-1 block text-xs text-gray-500">وقت البداية</label><input type="time" value={eveningBreak1Start} onChange={(e) => setEveningBreak1Start(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" /></div><div><label className="mb-1 block text-xs text-gray-500">وقت النهاية</label><input type="time" value={eveningBreak1End} onChange={(e) => setEveningBreak1End(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" /></div></div></div><div className="rounded-2xl border border-[#eef1f1] p-3"><div className="mb-2 text-sm font-semibold text-[#8c6968]">الاستراحة الثانية</div><div className="grid gap-2 sm:grid-cols-2"><div><label className="mb-1 block text-xs text-gray-500">وقت البداية</label><input type="time" value={eveningBreak2Start} onChange={(e) => setEveningBreak2Start(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" /></div><div><label className="mb-1 block text-xs text-gray-500">وقت النهاية</label><input type="time" value={eveningBreak2End} onChange={(e) => setEveningBreak2End(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" /></div></div></div></div> : null}
                             </div>
                           </div>
                         </div>
@@ -1266,7 +1503,7 @@ export default function HomePage() {
                                       </label>
                                     ))}
                                   </div>
-                                  {request.items.includes('vip') ? <div className="mt-3"><label className="mb-1 block text-sm text-gray-600">ضيافة VIP لعدد</label><input value={request.vipCount} onChange={(e) => updateHospitalityRequest(request.id, { vipCount: normalizeArabicDigits(e.target.value).replace(/[^\d]/g, '') })} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="اكتب العدد" /></div> : null}
+                                  {request.items.includes('vip') ? <div className="mt-3"><label className="mb-1 block text-sm text-gray-600">ضيافة VIP لعدد مشاركين</label><input value={request.vipCount} onChange={(e) => updateHospitalityRequest(request.id, { vipCount: normalizeArabicDigits(e.target.value).replace(/[^\d]/g, '') })} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="العدد إلزامي عند اختيار هذا العنصر" /></div> : null}
                                 </div>
                               );
                             })}
@@ -1316,7 +1553,7 @@ export default function HomePage() {
                       <button onClick={saveToArchive} type="button" className="rounded-xl bg-[#016564] px-4 py-3 text-sm font-semibold text-white">حفظ في الأرشيف</button>
                       <button onClick={copyEmail} type="button" className="rounded-xl border border-[#d0b284] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">نسخ الرسالة</button>
                       <button onClick={openDraft} type="button" className="rounded-xl border border-[#d6d7d4] bg-[#f8f9f9] px-4 py-3 text-sm font-semibold text-[#016564]">فتح مسودة بريد</button>
-                      <button onClick={() => setSystemNotice('تصدير JPG سيكون في المرحلة التالية بعد تثبيت الأرشفة والنسخ.')} type="button" className="rounded-xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">تصدير JPG لاحقًا</button>
+                      <button onClick={exportAsJpg} type="button" className="rounded-xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">تصدير JPG</button>
                     </div>
                   </div>
                 </div>
@@ -1327,7 +1564,22 @@ export default function HomePage() {
                       <h2 className="text-lg font-semibold text-[#016564]">المعاينة</h2>
                       {selectedDeptData ? <div className="text-xs text-[#8c6968]">إلى: {selectedDeptData.emailTo}</div> : null}
                     </div>
-                    <div className="min-h-[600px] rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4" dangerouslySetInnerHTML={{ __html: previewHtml || '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة، حدّد تاريخ البداية، أضف الدورات، وستُحدَّث المعاينة تلقائيًا.</div>' }} />
+                    <div ref={previewRef} className="min-h-[600px] rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4" dangerouslySetInnerHTML={{ __html: previewHtml || '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة، حدّد تاريخ البداية، أضف الدورات، وستُحدَّث المعاينة تلقائيًا.</div>' }} />
+                    <div className="sr-only" aria-hidden>
+                      <div ref={posterRef} style={{ width: '1080px', background: 'linear-gradient(180deg, #f8f9f9 0%, #ffffff 100%)', padding: '42px', color: '#1f2937', fontFamily: 'Cairo, Arial, sans-serif', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(208,178,132,0.18), transparent 24%), radial-gradient(circle at 80% 10%, rgba(1,101,100,0.09), transparent 18%), repeating-linear-gradient(45deg, rgba(208,178,132,0.08) 0, rgba(208,178,132,0.08) 2px, transparent 2px, transparent 18px)' }} />
+                        <div style={{ position: 'relative', border: '1px solid #e4d6bc', borderRadius: '28px', padding: '28px', background: 'rgba(255,255,255,0.94)', boxShadow: '0 22px 48px rgba(1,101,100,0.08)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                            <div>
+                              <div style={{ color: '#016564', fontSize: '30px', fontWeight: 800 }}>منصة المراسلات الذكية</div>
+                              <div style={{ color: '#8c6968', fontSize: '16px' }}>جامعة نايف العربية للعلوم الأمنية</div>
+                            </div>
+                            <img src="/naif-logo.png" alt="شعار جامعة نايف" style={{ width: '170px', height: 'auto', objectFit: 'contain' }} />
+                          </div>
+                          <div dangerouslySetInnerHTML={{ __html: previewHtml || '' }} />
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
@@ -1358,6 +1610,48 @@ export default function HomePage() {
           )}
         </div>
       </main>
+
+      {showArchiveModal ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-3xl rounded-[28px] border border-[#e4e7e7] bg-white p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-[#016564]">الأرشيف المركزي للمراسلات</h3>
+                <p className="mt-1 text-sm text-[#8c6968]">استعراض الرسائل المحفوظة واستدعاؤها أو حذفها.</p>
+              </div>
+              <button type="button" onClick={() => setShowArchiveModal(false)} className="rounded-xl border border-[#d6d7d4] px-3 py-2 text-sm font-semibold text-[#016564]">إغلاق</button>
+            </div>
+
+            {!archiveUnlocked ? (
+              <div className="rounded-2xl border border-[#eef1f1] p-4">
+                <label className="mb-1 block text-sm text-gray-600">الرقم السري للأرشيف</label>
+                <input type="password" value={archivePassword} onChange={(e) => setArchivePassword(e.target.value)} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="أدخل الرقم السري" />
+                <button type="button" onClick={() => { if (archivePassword === ARCHIVE_PASSWORD) { setArchiveUnlocked(true); setArchivePassword(''); } else { setSystemNotice('الرقم السري غير صحيح.'); } }} className="mt-3 rounded-xl bg-[#016564] px-4 py-3 text-sm font-semibold text-white">دخول الأرشيف</button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="text-xs text-[#8c6968]">آخر 25 نسخة محفوظة</div>
+                <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+                  {visibleArchiveRecords.length ? visibleArchiveRecords.map((record) => (
+                    <div key={record.id} className="rounded-2xl border border-[#eef1f1] p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <div className="text-sm font-semibold text-[#016564]">{record.label}</div>
+                          <div className="mt-1 text-xs text-[#8c6968]">{new Date(record.createdAt).toLocaleString('en-GB')}</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => loadFromArchive(record)} className="rounded-xl border border-[#d0b284] px-3 py-2 text-sm font-semibold text-[#016564]">استدعاء</button>
+                          <button type="button" onClick={() => deleteArchiveRecord(record.id)} className="rounded-xl border border-[#f0d9df] px-3 py-2 text-sm font-semibold text-[#7c1e3e]">حذف</button>
+                        </div>
+                      </div>
+                    </div>
+                  )) : <div className="rounded-2xl border border-dashed border-[#d6d7d4] p-4 text-sm text-[#8c6968]">لا توجد رسائل محفوظة بعد.</div>}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       <Footer />
     </div>
