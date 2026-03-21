@@ -201,6 +201,34 @@ const HEADER_CANDIDATES = {
   location: ['القاعة', 'مكان تنفيذ القاعة', 'مكان التنفيذ', 'الموقع'],
 };
 
+const DEFAULT_LMS_HEADERS = [
+  'نوع البرنامج',
+  'المجال التدريبي',
+  'اسم التدريب',
+  'معرّف التدريب',
+  'الحالة',
+  'التصنيف',
+  'تاريخ البدء',
+  'تاريخ الانتهاء',
+  'المدة',
+  'توقيت',
+  'ساعات التدريب',
+  'مكان التنفيذ',
+  'القاعة',
+  'مقدم التدريب',
+  'المدرّبون',
+  'منسق التدريب',
+  'مكان تنفيذ القاعة',
+  'مخرجات التعلم',
+  'مطلوب مترجم',
+  'يترجم',
+  'شهادة',
+  'نوع التسعير',
+  'النوع الفرعي للتسعير',
+  'الحد الأقصى للمقعد',
+  'السعر',
+];
+
 const lmsLocationHints: Array<{ pattern: RegExp; value: string }> = [
   { pattern: /مركز\s*السلامة\s*المرورية/i, value: 'مركز السلامة المرورية' },
   { pattern: /مركز\s*الأمن\s*السيبراني/i, value: 'مركز الأمن السيبراني' },
@@ -327,6 +355,11 @@ function buildDurationText(start: string, end: string, location?: string) {
   if (days === 1) return 'يوم واحد';
   if (days === 2) return 'يومان';
   return `${days} أيام`;
+}
+
+function getEarliestStartDate(records: CourseRecord[]) {
+  const dates = records.map((item) => item.startDate).filter(Boolean).sort();
+  return dates[0] || '';
 }
 
 function formatDisplayDate(dateStr: string) {
@@ -673,23 +706,31 @@ function parseCourseLine(line: string): CourseRecord | null {
 
 function parseStructuredPastedRows(text: string) {
   const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.replace(/\u00a0/g, ''))
+    .split(/
+?
+/)
+    .map((line) => line.replace(/ /g, ''))
     .filter((line) => line.trim());
 
-  if (!lines.length || !lines.some((line) => line.includes('\t'))) return [];
+  if (!lines.length || !lines.some((line) => line.includes('	'))) return [];
 
-  const rows = lines.map((line) => line.split('\t').map((cell) => cell.trim()));
+  const rows = lines.map((line) => line.split('	').map((cell) => cell.trim()));
   const headerIndex = rows.findIndex((cells) => {
     const line = normalizeHeader(cells.join(' '));
     return HEADER_CANDIDATES.title.some((candidate) => line.includes(normalizeHeader(candidate)));
   });
 
-  if (headerIndex < 0) return [];
+  if (headerIndex >= 0) {
+    const headers = rows[headerIndex];
+    const dataRows = rows.slice(headerIndex + 1).filter((cells) => cells.some((cell) => cell.trim()));
+    const objects = dataRows.map((cells) => Object.fromEntries(headers.map((header, index) => [header || `col_${index}`, cells[index] || ''])));
+    return parseSheetRows(objects);
+  }
 
-  const headers = rows[headerIndex];
-  const dataRows = rows.slice(headerIndex + 1).filter((cells) => cells.some((cell) => cell.trim()));
-  const objects = dataRows.map((cells) => Object.fromEntries(headers.map((header, index) => [header || `col_${index}`, cells[index] || ''])));
+  const wideRows = rows.filter((cells) => cells.filter((cell) => cell.trim()).length >= 20);
+  if (!wideRows.length) return [];
+
+  const objects = wideRows.map((cells) => Object.fromEntries(DEFAULT_LMS_HEADERS.map((header, index) => [header, cells[index] || ''])));
   return parseSheetRows(objects);
 }
 
@@ -1031,6 +1072,14 @@ export default function HomePage() {
   const formattedStartDate = useMemo(() => getFormattedStartDate(startDate), [startDate]);
 
   useEffect(() => {
+    if (!courses.length) return;
+    const earliest = getEarliestStartDate(courses);
+    if (earliest && earliest !== startDate) {
+      setStartDate(earliest);
+    }
+  }, [courses]);
+
+  useEffect(() => {
     try {
       const saved = localStorage.getItem(ARCHIVE_KEY);
       if (saved) {
@@ -1154,7 +1203,7 @@ export default function HomePage() {
       setFileInputKey((prev) => prev + 1);
       setPastedText('');
       setEditingIndex(null);
-      if (!startDate) setStartDate(validRows[0]?.startDate || '');
+      setStartDate(getEarliestStartDate(validRows));
       setSystemNotice(`تم استيراد ${validRows.length} دورة بنجاح من الملف: ${file.name}`);
     } catch {
       setSystemNotice('تعذر قراءة ملف Excel الحالي.');
@@ -1173,7 +1222,7 @@ export default function HomePage() {
     setCourses(rows);
     setFileName('');
     setImportSummary(`تم تحويل النص الذكي إلى ${rows.length} دورة.`);
-    setStartDate(rows[0]?.startDate || '');
+    setStartDate(getEarliestStartDate(rows));
     setSystemNotice(`تم تحويل النص إلى ${rows.length} دورة.`);
   }
 
@@ -1432,16 +1481,20 @@ export default function HomePage() {
       return;
     }
 
-    const draftWindow = window.open('', '_blank', 'noopener,noreferrer,width=1280,height=900');
-    if (!draftWindow) {
-      setSystemNotice('تعذر فتح النسخة البريدية المنسقة. تأكد من السماح بالنوافذ المنبثقة.');
-      return;
+    try {
+      const html = buildDraftWindowHtml(selectedDeptData.emailTo, cc, autoSubject, previewHtml);
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const draftWindow = window.open(url, '_blank');
+      if (!draftWindow) {
+        URL.revokeObjectURL(url);
+        setSystemNotice('تعذر فتح النسخة البريدية المنسقة. تأكد من السماح بالنوافذ المنبثقة.');
+        return;
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch {
+      setSystemNotice('تعذر فتح النسخة البريدية المنسقة حاليًا.');
     }
-
-    draftWindow.document.open();
-    draftWindow.document.write(buildDraftWindowHtml(selectedDeptData.emailTo, cc, autoSubject, previewHtml));
-    draftWindow.document.close();
-    draftWindow.focus();
   }
 
   function saveToArchive() {
@@ -1781,7 +1834,7 @@ export default function HomePage() {
                           </div>
                           <div>
                             <label className="mb-1 block text-sm text-gray-600">مدة البرنامج</label>
-                            <input readOnly value={buildDurationText(courseForm.startDate, courseForm.endDate)} className="w-full rounded-xl border border-[#d6d7d4] bg-[#f8f9f9] px-3 py-2 text-[#016564]" />
+                            <input readOnly value={buildDurationText(courseForm.startDate, courseForm.endDate, courseForm.location)} className="w-full rounded-xl border border-[#d6d7d4] bg-[#f8f9f9] px-3 py-2 text-[#016564]" />
                           </div>
                           <div>
                             <label className="mb-1 block text-sm text-gray-600">الموقع</label>
@@ -1823,7 +1876,7 @@ export default function HomePage() {
                                   <td className="border border-[#d6d7d4] px-3 py-2">{course.title}</td>
                                   <td className="border border-[#d6d7d4] px-3 py-2">{course.period}</td>
                                   <td className="border border-[#d6d7d4] px-3 py-2">{course.participants}</td>
-                                  <td className="border border-[#d6d7d4] px-3 py-2">{buildDurationText(course.startDate, course.endDate)}</td>
+                                  <td className="border border-[#d6d7d4] px-3 py-2">{buildDurationText(course.startDate, course.endDate, course.location)}</td>
                                   <td className="border border-[#d6d7d4] px-3 py-2">{formatDisplayDate(course.startDate)}</td>
                                   <td className="border border-[#d6d7d4] px-3 py-2">{formatDisplayDate(course.endDate)}</td>
                                   <td className="border border-[#d6d7d4] px-3 py-2">{course.location}</td>
