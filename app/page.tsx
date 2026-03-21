@@ -165,17 +165,6 @@ const hospitalityItems: Array<{ key: HospitalityItemKey; label: string }> = [
   { key: 'vip', label: 'ضيافة VIP' },
 ];
 
-const hospitalityItemIcons: Record<HospitalityItemKey, string> = {
-  breakfast: '🥐',
-  saudiCoffee: '☕',
-  americanCoffee: '☕',
-  juices: '🧃',
-  hotDrinks: '🍵',
-  water: '💧',
-  healthy: '🍏',
-  vip: '⭐',
-};
-
 const securityOptions = [
   'تنظيم دخول المشاركين والزوار وفق القوائم المعتمدة.',
   'تسهيل الوصول إلى مبنى التدريب والقاعات المحددة.',
@@ -202,12 +191,14 @@ const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', '�
 const arabicWeekdays = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 const HEADER_CANDIDATES = {
-  title: ['اسم التدريب', 'اسم التدريب العربي', 'اسم التدريب باللغة العربية', 'اسم الدورة باللغة العربية', 'اسم الدورة', 'عنوان الدورة', 'الدورة التدريبية', 'الدورة', 'البرنامج التدريبي', 'اسم البرنامج باللغة العربية', 'اسم البرنامج'],
-  period: ['الفترة', 'نوع الفترة', 'الفترة التدريبية'],
-  participants: ['عدد المتدربين', 'عدد المشاركين', 'المشاركون', 'العدد المعتمد', 'العدد'],
-  startDate: ['تاريخ البداية', 'تاريخ بدء التنفيذ', 'بداية التنفيذ', 'بداية الدورة', 'من', 'تاريخ البدء'],
-  endDate: ['تاريخ النهاية', 'تاريخ الانتهاء', 'نهاية التنفيذ', 'نهاية الدورة', 'إلى', 'تاريخ الختام'],
-  location: ['مكان التنفيذ', 'مقر التنفيذ', 'الموقع', 'موقع التنفيذ', 'القاعة', 'مكان الانعقاد'],
+  title: ['اسم التدريب', 'اسم الدورة', 'عنوان الدورة'],
+  period: ['توقيت', 'الفترة', 'نوع الفترة'],
+  participants: ['الحد الأقصى للمقعد', 'عدد المتدربين', 'عدد المشاركين'],
+  startDate: ['تاريخ البدء', 'تاريخ البداية'],
+  endDate: ['تاريخ الانتهاء', 'تاريخ النهاية'],
+  executionPlace: ['مكان التنفيذ'],
+  hall: ['القاعة', 'مكان تنفيذ القاعة'],
+  location: ['القاعة', 'مكان تنفيذ القاعة', 'مكان التنفيذ', 'الموقع'],
 };
 
 const lmsLocationHints: Array<{ pattern: RegExp; value: string }> = [
@@ -391,7 +382,7 @@ function buildBreakSentence(firstStart: string, firstEnd: string, secondStart: s
   const segments = [];
   if (firstStart || firstEnd) segments.push(`• الاستراحة الأولى: ${formatBreakRange(firstStart, firstEnd)}`);
   if (secondStart || secondEnd) segments.push(`• الاستراحة الثانية: ${formatBreakRange(secondStart, secondEnd)}`);
-  return segments.length ? segments.join('\n') : '• يتم التنسيق لاحقًا.';
+  return segments.length ? segments.join('\\n') : '• يتم التنسيق لاحقًا.';
 }
 
 function smartComposeRequest(raw: string, context: 'hospitality' | 'security' | 'medical' | 'support') {
@@ -562,80 +553,62 @@ function buildCourseRecord(input: {
   return { title, period, participants, startDate, endDate, location };
 }
 
-function parseSheetRows(rows: Record<string, unknown>[]) {
-  if (!rows.length) return [];
+function buildRecordFromLmsRow(row: Record<string, unknown>) {
+  const titleKey = findHeader(row, HEADER_CANDIDATES.title);
+  const periodKey = findHeader(row, HEADER_CANDIDATES.period);
+  const participantsKey = findHeader(row, HEADER_CANDIDATES.participants);
+  const startKey = findHeader(row, HEADER_CANDIDATES.startDate);
+  const endKey = findHeader(row, HEADER_CANDIDATES.endDate);
+  const executionPlaceKey = findHeader(row, HEADER_CANDIDATES.executionPlace);
+  const hallKey = findHeader(row, HEADER_CANDIDATES.hall);
+  const genericLocationKey = findHeader(row, HEADER_CANDIDATES.location);
 
-  const firstRow = rows[0];
-  const titleKey = findHeader(firstRow, HEADER_CANDIDATES.title);
-  const periodKey = findHeader(firstRow, HEADER_CANDIDATES.period);
-  const participantsKey = findHeader(firstRow, HEADER_CANDIDATES.participants);
-  const startKey = findHeader(firstRow, HEADER_CANDIDATES.startDate);
-  const endKey = findHeader(firstRow, HEADER_CANDIDATES.endDate);
-  const locationKey = findHeader(firstRow, HEADER_CANDIDATES.location);
+  const executionPlace = String(executionPlaceKey ? row[executionPlaceKey] ?? '' : '').trim();
+  const hall = String(hallKey ? row[hallKey] ?? '' : '').trim();
+  const genericLocation = String(genericLocationKey ? row[genericLocationKey] ?? '' : '').trim();
 
-  return rows
-    .map((row) =>
-      buildCourseRecord({
-        title: titleKey ? row[titleKey] : '',
-        period: periodKey ? row[periodKey] : '',
-        participants: participantsKey ? row[participantsKey] : '',
-        startDate: startKey ? row[startKey] : '',
-        endDate: endKey ? row[endKey] : '',
-        location: locationKey ? row[locationKey] : '',
-      }),
-    )
-    .filter((item): item is CourseRecord => Boolean(item));
+  const location =
+    /خارجي/i.test(normalizeHeader(executionPlace))
+      ? 'خارجي'
+      : hall || genericLocation || executionPlace;
+
+  return buildCourseRecord({
+    title: titleKey ? row[titleKey] : '',
+    period: periodKey ? row[periodKey] : '',
+    participants: participantsKey ? row[participantsKey] : '',
+    startDate: startKey ? row[startKey] : '',
+    endDate: endKey ? row[endKey] : '',
+    location,
+  });
 }
 
-function findHeaderIndex(headerRow: unknown[], candidates: string[]) {
-  const normalized = headerRow.map((cell) => normalizeHeader(String(cell ?? '')));
-  for (const candidate of candidates) {
-    const idx = normalized.findIndex((value) => value === normalizeHeader(candidate));
-    if (idx >= 0) return idx;
-  }
-  for (const candidate of candidates) {
-    const idx = normalized.findIndex((value) => value.includes(normalizeHeader(candidate)));
-    if (idx >= 0) return idx;
-  }
-  return -1;
+function parseSheetRows(rows: Record<string, unknown>[]) {
+  if (!rows.length) return [];
+  return rows.map((row) => buildRecordFromLmsRow(row)).filter((item): item is CourseRecord => Boolean(item));
 }
 
 function parseSheetFromAoa(rows: unknown[][]) {
   if (!rows.length) return [];
 
   const headerIndex = rows.findIndex((cells) => {
-    const titleIndex = findHeaderIndex(cells || [], HEADER_CANDIDATES.title);
-    const startIndex = findHeaderIndex(cells || [], HEADER_CANDIDATES.startDate);
-    const endIndex = findHeaderIndex(cells || [], HEADER_CANDIDATES.endDate);
-    return titleIndex >= 0 && startIndex >= 0 && endIndex >= 0;
+    const joined = normalizeHeader((cells || []).map((cell) => String(cell ?? '')).join(' '));
+    return (
+      joined.includes(normalizeHeader('اسم التدريب')) &&
+      joined.includes(normalizeHeader('تاريخ البدء')) &&
+      joined.includes(normalizeHeader('تاريخ الانتهاء')) &&
+      joined.includes(normalizeHeader('توقيت'))
+    );
   });
 
   if (headerIndex < 0) return [];
 
-  const headerRow = rows[headerIndex] || [];
-  const titleIndex = findHeaderIndex(headerRow, HEADER_CANDIDATES.title);
-  const periodIndex = findHeaderIndex(headerRow, HEADER_CANDIDATES.period);
-  const participantsIndex = findHeaderIndex(headerRow, HEADER_CANDIDATES.participants);
-  const startIndex = findHeaderIndex(headerRow, HEADER_CANDIDATES.startDate);
-  const endIndex = findHeaderIndex(headerRow, HEADER_CANDIDATES.endDate);
-  const locationIndex = findHeaderIndex(headerRow, HEADER_CANDIDATES.location);
-
-  if (titleIndex < 0 || startIndex < 0 || endIndex < 0) return [];
-
-  return rows
+  const headerRow = rows[headerIndex].map((cell) => String(cell ?? '').trim());
+  const objects = rows
     .slice(headerIndex + 1)
     .filter((cells) => (cells || []).some((cell) => String(cell ?? '').trim()))
-    .map((cells) =>
-      buildCourseRecord({
-        title: titleIndex >= 0 ? cells[titleIndex] : '',
-        period: periodIndex >= 0 ? cells[periodIndex] : '',
-        participants: participantsIndex >= 0 ? cells[participantsIndex] : '',
-        startDate: startIndex >= 0 ? cells[startIndex] : '',
-        endDate: endIndex >= 0 ? cells[endIndex] : '',
-        location: locationIndex >= 0 ? cells[locationIndex] : '',
-      }),
-    )
-    .filter((item): item is CourseRecord => Boolean(item));
+    .map((cells) => Object.fromEntries(headerRow.map((header, index) => [header || `col_${index}`, cells[index] ?? ''])));
+
+  return parseSheetRows(objects as Record<string, unknown>[]);
 }
 
 function parseCourseLine(line: string): CourseRecord | null {
@@ -744,10 +717,9 @@ function parseRowsFromPastedText(text: string) {
 
 function stripLeadingSubjectRow(bodyHtml: string) {
   return String(bodyHtml || '')
-    .replace(/<tr>[\s\S]*?الموضوع:[\s\S]*?<\/tr>/i, '')
+    .replace(/<tr>\s*<td[^>]*>\s*الموضوع:[\s\S]*?<\/td>\s*<\/tr>/gi, '')
     .replace(/<div[^>]*class=["']subject["'][^>]*>[\s\S]*?<\/div>/gi, '')
-    .replace(/<p[^>]*>\s*الموضوع:[\s\S]*?<\/p>/gi, '')
-    .trim();
+    .replace(/<p[^>]*>\s*الموضوع:[\s\S]*?<\/p>/gi, '');
 }
 
 function buildWordDocumentHtml(subject: string, bodyHtml: string) {
@@ -795,9 +767,7 @@ function buildWordDocumentHtml(subject: string, bodyHtml: string) {
           font-weight: 700 !important;
         }
         tbody tr:nth-child(even) td { background: #f3f4f6 !important; }
-        p, div, span, li { font-size: 11pt !important; text-align: right !important; font-weight: 400 !important; }
-        ul, ol { margin: 0; padding-right: 18px; }
-        .left-signature { text-align: left !important; }
+        p, div, span, li { font-size: 11pt !important; text-align: right !important; }
       </style>
     </head>
     <body>
@@ -845,7 +815,6 @@ export default function HomePage() {
   const [archiveUnlocked, setArchiveUnlocked] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [importSummary, setImportSummary] = useState('');
-  const [importState, setImportState] = useState<'idle' | 'success' | 'error'>('idle');
   const previewRef = useRef<HTMLDivElement | null>(null);
   const posterRef = useRef<HTMLDivElement | null>(null);
   const [hospitalityRequests, setHospitalityRequests] = useState<HospitalityRequest[]>([createEmptyHospitalityRequest()]);
@@ -895,7 +864,6 @@ export default function HomePage() {
     setFileName('');
     setPastedText('');
     setImportSummary('');
-    setImportState('idle');
     setEditingIndex(null);
     setEnableMorningBreaks(true);
     setEnableEveningBreaks(false);
@@ -978,8 +946,7 @@ export default function HomePage() {
 
       if (!validRows.length) {
         setImportSummary('');
-        setImportState('error');
-        setSystemNotice('تعذر قراءة ملف Excel الحالي. تأكد من أنه ملف LMS الأصلي ويحتوي على: اسم التدريب، الفترة، عدد المتدربين، تاريخ البدء، تاريخ الانتهاء، ومكان التنفيذ.');
+        setSystemNotice('تعذر قراءة ملف Excel الحالي. تأكد من أن الملف هو جدول LMS الأصلي، وأن الأعمدة تشمل: اسم التدريب، توقيت، الحد الأقصى للمقعد، تاريخ البدء، تاريخ الانتهاء، مكان التنفيذ، والقاعة.');
         setFileName('');
         setFileInputKey((prev) => prev + 1);
         return;
@@ -988,7 +955,6 @@ export default function HomePage() {
       setCourses(validRows);
       setFileName(file.name);
       setImportSummary(`تم استيراد ${validRows.length} دورة من الملف: ${file.name}`);
-      setImportState('success');
       setFileInputKey((prev) => prev + 1);
       setPastedText('');
       setEditingIndex(null);
@@ -998,7 +964,6 @@ export default function HomePage() {
       setSystemNotice('تعذر قراءة ملف Excel الحالي.');
       setFileName('');
       setImportSummary('');
-      setImportState('error');
       setFileInputKey((prev) => prev + 1);
     }
   }
@@ -1012,7 +977,6 @@ export default function HomePage() {
     setCourses(rows);
     setFileName('');
     setImportSummary(`تم تحويل النص الذكي إلى ${rows.length} دورة.`);
-    setImportState('success');
     setStartDate(rows[0]?.startDate || '');
     setSystemNotice(`تم تحويل النص إلى ${rows.length} دورة.`);
   }
@@ -1075,13 +1039,12 @@ export default function HomePage() {
       .map((request) => {
         const lines = request.items.map((key) => {
           const label = hospitalityItems.find((item) => item.key === key)?.label || key;
-          const icon = hospitalityItemIcons[key] || '•';
           if (key === 'vip') {
-            return request.vipCount ? `${icon} ضيافة VIP لعدد ${request.vipCount} مشارك` : `${icon} ضيافة VIP`;
+            return request.vipCount ? `ضيافة VIP لعدد ${request.vipCount} مشارك` : 'ضيافة VIP';
           }
-          return `${icon} ${label}`;
+          return label;
         });
-        return [request.place, lines.join('\n')] as [string, string];
+        return [request.place, lines.map((line) => `• ${line}`).join('\n')] as [string, string];
       });
   }
 
@@ -1201,8 +1164,8 @@ export default function HomePage() {
               ${extra}
               <p style="margin:18px 0 0 0; text-align:right;">${closing}</p>
               <br />
-              <p class="left-signature" style="margin:0; text-align:left;">فريق عمل إدارة عمليات التدريب</p>
-              <p class="left-signature" style="margin:0; text-align:left;">وكالة الجامعة للتدريب</p>
+              <p style="margin:0; text-align:left;">فريق عمل إدارة عمليات التدريب</p>
+              <p style="margin:0; text-align:left;">وكالة الجامعة للتدريب</p>
             </td>
           </tr>
         </table>
@@ -1242,7 +1205,7 @@ export default function HomePage() {
 
   async function copyEmail() {
     if (!previewHtml) {
-      setSystemNotice('اختر الإدارة وحدّث المعاينة أولًا.');
+      setSystemNotice('لا توجد معاينة قابلة للنسخ.');
       return;
     }
     try {
@@ -1263,12 +1226,8 @@ export default function HomePage() {
   }
 
   function openDraft() {
-    if (!selectedDepartment) {
-      setSystemNotice('اختر الإدارة التي تريد أن ترسل لها الرسالة أولًا.');
-      return;
-    }
     if (!selectedDeptData || !previewHtml) {
-      setSystemNotice('أكمل البيانات ثم حدّث المعاينة أولًا.');
+      setSystemNotice('أكمل المعاينة أولًا.');
       return;
     }
     const url = `mailto:${encodeURIComponent(selectedDeptData.emailTo)}?subject=${encodeURIComponent(autoSubject)}&cc=${encodeURIComponent(cc)}&body=${encodeURIComponent(toPlainText(previewHtml))}`;
@@ -1371,8 +1330,9 @@ export default function HomePage() {
       setSystemNotice('اختر الإدارة التي تريد أن ترسل لها الرسالة أولًا.');
       return;
     }
+
     if (!posterRef.current || !previewHtml) {
-      setSystemNotice('أكمل البيانات ثم حدّث المعاينة قبل التصدير.');
+      setSystemNotice('حدّث المعاينة أولًا قبل التصدير.');
       return;
     }
 
@@ -1383,7 +1343,7 @@ export default function HomePage() {
         cacheBust: true,
         backgroundColor: '#f8f9f9',
         canvasWidth: 1400,
-        
+        skipFonts: true,
       });
 
       const link = document.createElement('a');
@@ -1402,8 +1362,9 @@ export default function HomePage() {
       setSystemNotice('اختر الإدارة التي تريد أن ترسل لها الرسالة أولًا.');
       return;
     }
+
     if (!previewHtml || !autoSubject) {
-      setSystemNotice('أكمل البيانات ثم حدّث المعاينة قبل التصدير.');
+      setSystemNotice('حدّث المعاينة أولًا قبل التصدير.');
       return;
     }
 
@@ -1503,8 +1464,6 @@ export default function HomePage() {
                   العودة للرئيسية
                 </button>
               </div>
-
-
               <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
                 {departments.map((dept) => {
                   const active = selectedDepartment === dept.key;
@@ -1774,17 +1733,16 @@ export default function HomePage() {
                       <h2 className="text-lg font-semibold text-[#016564]">المعاينة</h2>
                       {selectedDeptData ? <div className="text-xs text-[#8c6968]">إلى: {selectedDeptData.emailTo}</div> : null}
                     </div>
-                    <div ref={previewRef} className="min-h-[600px] rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4" dangerouslySetInnerHTML={{ __html: previewHtml || '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة التي تريد الإرسال لها، ثم حدّد تاريخ البداية وأضف الدورات، وستُحدَّث المعاينة تلقائيًا.</div>' }} />
+                    <div ref={previewRef} className="min-h-[600px] rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4" dangerouslySetInnerHTML={{ __html: previewHtml || '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة، حدّد تاريخ البداية، أضف الدورات، وستُحدَّث المعاينة تلقائيًا.</div>' }} />
                     <div className="sr-only" aria-hidden>
                       <div
                         ref={posterRef}
                         style={{
                           width: '1400px',
-                          background: 'linear-gradient(135deg, #f7f8f7 0%, #ffffff 45%, #f8f6f1 100%)',
+                          background: 'linear-gradient(135deg, #f4f7f6 0%, #edf6f4 32%, #fdfcf9 100%)',
                           padding: '36px',
                           color: '#1f2937',
                           fontFamily: 'Cairo, Arial, sans-serif',
-                          fontWeight: 400,
                           position: 'relative',
                           overflow: 'hidden',
                           boxSizing: 'border-box',
@@ -1795,7 +1753,7 @@ export default function HomePage() {
                             position: 'absolute',
                             inset: 0,
                             backgroundImage:
-                              'radial-gradient(circle at 15% 15%, rgba(208,178,132,0.18), transparent 22%), radial-gradient(circle at 85% 8%, rgba(1,101,100,0.08), transparent 16%), repeating-linear-gradient(45deg, rgba(208,178,132,0.05) 0, rgba(208,178,132,0.05) 2px, transparent 2px, transparent 20px)',
+                              'linear-gradient(180deg, rgba(1,101,100,0.05), transparent 22%), radial-gradient(circle at 12% 10%, rgba(208,178,132,0.22), transparent 18%), radial-gradient(circle at 88% 16%, rgba(1,101,100,0.12), transparent 16%), repeating-linear-gradient(135deg, rgba(208,178,132,0.04) 0, rgba(208,178,132,0.04) 2px, transparent 2px, transparent 26px)',
                           }}
                         />
                         <div
@@ -1805,15 +1763,17 @@ export default function HomePage() {
                             borderRadius: '30px',
                             padding: '28px 30px',
                             background: 'rgba(255,255,255,0.97)',
-                            boxShadow: '0 18px 44px rgba(1,101,100,0.08)',
+                            boxShadow: '0 24px 60px rgba(1,101,100,0.12)',
                             boxSizing: 'border-box',
                           }}
                         >
-                          <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-                            <img src={EXPORT_POSTER_LOGO} alt="شعار جامعة نايف" style={{ width: '520px', maxWidth: '80%', height: 'auto', objectFit: 'contain', margin: '0 auto 24px auto', display: 'block' }} />
-                            <div style={{ color: '#016564', fontSize: '34px', fontWeight: 400 }}>
+                          <div style={{ textAlign: 'center', marginBottom: '22px', position: 'relative' }}>
+                            <div style={{position:'absolute', insetInlineStart:'0', top:'12px', width:'180px', height:'180px', borderRadius:'9999px', background:'radial-gradient(circle, rgba(208,178,132,0.18), transparent 68%)'}} />
+                            <img src={EXPORT_POSTER_LOGO} alt="شعار جامعة نايف" style={{ width: '420px', height: 'auto', objectFit: 'contain', margin: '0 auto 18px auto', display: 'block' }} />
+                            <div style={{ color: '#016564', fontSize: '30px', fontWeight: 500, letterSpacing:'0px' }}>
                               الموضوع: {autoSubject}
                             </div>
+                            <div style={{margin:'10px auto 0 auto', width:'180px', height:'4px', borderRadius:'999px', background:'linear-gradient(90deg, rgba(208,178,132,0.2), #d0b284, rgba(1,101,100,0.16))'}} />
                           </div>
 
                           <style>{`
@@ -1831,35 +1791,35 @@ export default function HomePage() {
                             .poster-html td {
                               border: 1px solid #d6d7d4 !important;
                               padding: 10px 8px !important;
-                              font-size: 18px !important;
+                              font-size: 17px !important;
                               line-height: 1.6 !important;
                               vertical-align: middle !important;
-                              text-align: right !important;
+                              text-align: center !important;
                               white-space: normal !important;
                               word-break: break-word !important;
-                              font-family: Cairo, Arial, sans-serif !important;
-                              font-weight: 400 !important;
                             }
                             .poster-html th {
                               background: #016564 !important;
                               color: #ffffff !important;
-                              font-weight: 700 !important;
-                              text-align: center !important;
+                              font-weight: 800 !important;
                             }
                             .poster-html tbody tr:nth-child(even) td {
                               background: #f3f4f6 !important;
                             }
                             .poster-html p,
                             .poster-html div,
-                            .poster-html span {
-                              font-size: 22px !important;
-                              line-height: 1.95 !important;
+                            .poster-html span,
+                            .poster-html li {
+                              font-size: 18px !important;
+                              line-height: 1.9 !important;
                               text-align: right !important;
                               font-family: Cairo, Arial, sans-serif !important;
                               font-weight: 400 !important;
                             }
-                            .poster-html ul, .poster-html ol { margin: 0; padding-right: 22px; }
-                            .poster-html .left-signature { text-align: left !important; }
+                            .poster-html ul {
+                              margin: 0 !important;
+                              padding-right: 18px !important;
+                            }
                           `}</style>
 
                           <div className="poster-html" dangerouslySetInnerHTML={{ __html: stripLeadingSubjectRow(previewHtml || '') }} />
@@ -1940,7 +1900,7 @@ export default function HomePage() {
       ) : null}
 
       {systemNotice ? (
-        <div className="fixed bottom-5 left-5 z-[80] max-w-sm rounded-2xl border border-[#d0b284] bg-white/95 px-4 py-3 text-sm font-medium text-[#6b5b35] shadow-xl backdrop-blur">
+        <div className="fixed bottom-5 left-5 z-[80] max-w-md rounded-2xl border border-[#d0b284] bg-white px-4 py-3 text-sm font-medium text-[#6b5b35] shadow-[0_22px_48px_-18px_rgba(1,101,100,0.35)]">
           {systemNotice}
         </div>
       ) : null}
