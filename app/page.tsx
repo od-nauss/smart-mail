@@ -37,6 +37,14 @@ type HospitalityRequest = {
   vipCount: string;
 };
 
+type UploadedAttachment = {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  data: string;
+};
+
 type WeeklySnapshot = {
   selectedDepartment: DepartmentKey | null;
   cc: string;
@@ -370,10 +378,18 @@ function formatDisplayDate(dateStr: string) {
 
 function formatCourseDateRange(start: string, end: string) {
   if (!start && !end) return '';
-  if (start && !end) return formatDisplayDate(start);
-  if (!start && end) return formatDisplayDate(end);
+  if (start && !end) return `من ${formatDisplayDate(start)}`;
+  if (!start && end) return `إلى ${formatDisplayDate(end)}`;
   if (start === end) return formatDisplayDate(start);
-  return `${formatDisplayDate(start)} - ${formatDisplayDate(end)}`;
+  return `من ${formatDisplayDate(start)} إلى ${formatDisplayDate(end)}`;
+}
+
+function formatCourseDateRangeHtml(start: string, end: string) {
+  if (!start && !end) return '';
+  if (start && !end) return `<div style="text-align:right;">من ${escapeHtml(formatDisplayDate(start))}</div>`;
+  if (!start && end) return `<div style="text-align:right;">إلى ${escapeHtml(formatDisplayDate(end))}</div>`;
+  if (start === end) return `<div style="text-align:right;">${escapeHtml(formatDisplayDate(start))}</div>`;
+  return `<div style="text-align:right;">من ${escapeHtml(formatDisplayDate(start))}</div><div style="text-align:right; margin-top:4px;">إلى ${escapeHtml(formatDisplayDate(end))}</div>`;
 }
 
 function getWeekLabelFromDate(dateStr: string) {
@@ -455,39 +471,37 @@ function buildCoursesTable(courses: CourseRecord[]) {
   const totalParticipants = courses.reduce((sum, item) => sum + Number(item.participants || 0), 0);
 
   return `
-    <table dir="rtl" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:collapse; margin-top:14px; font-family:Cairo, Arial, sans-serif; font-size:14px; border:1px solid #d6d7d4;">
+    <table dir="rtl" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:collapse; margin-top:14px; font-family:Cairo, Arial, sans-serif; font-size:14px; border:1px solid #d6d7d4; table-layout:fixed;">
       <thead>
         <tr style="background:#016564; color:#ffffff;">
-          <th style="border:1px solid #d6d7d4; padding:10px;">عنوان الدورة</th>
-          <th style="border:1px solid #d6d7d4; padding:10px;">نوع الفترة</th>
-          <th style="border:1px solid #d6d7d4; padding:10px;">عدد المشاركين</th>
-          <th style="border:1px solid #d6d7d4; padding:10px;">مدة البرنامج</th>
-          <th style="border:1px solid #d6d7d4; padding:10px;">التاريخ</th>
-          <th style="border:1px solid #d6d7d4; padding:10px;">الموقع</th>
+          <th style="border:1px solid #d6d7d4; padding:10px; width:28%;">عنوان الدورة</th>
+          <th style="border:1px solid #d6d7d4; padding:10px; width:12%;">نوع الفترة</th>
+          <th style="border:1px solid #d6d7d4; padding:10px; width:12%;">عدد المشاركين</th>
+          <th style="border:1px solid #d6d7d4; padding:10px; width:12%;">مدة البرنامج</th>
+          <th style="border:1px solid #d6d7d4; padding:10px; width:20%;">التاريخ</th>
+          <th style="border:1px solid #d6d7d4; padding:10px; width:16%;">الموقع</th>
         </tr>
       </thead>
       <tbody>
         ${courses
           .map(
-            (item) => `
-              <tr>
-                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(item.title)}</td>
-                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(item.period)}</td>
-                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(item.participants)}</td>
-                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(buildDurationText(item.startDate, item.endDate, item.location))}</td>
-                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(formatCourseDateRange(item.startDate, item.endDate))}</td>
-                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top;">${escapeHtml(item.location)}</td>
+            (item, index) => `
+              <tr style="background:${index % 2 === 0 ? '#ffffff' : '#f6f8f8'};">
+                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top; text-align:right; word-break:break-word; line-height:1.8;">${escapeHtml(item.title)}</td>
+                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top; text-align:center;">${escapeHtml(item.period)}</td>
+                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top; text-align:center;">${escapeHtml(item.participants)}</td>
+                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top; text-align:center;">${escapeHtml(buildDurationText(item.startDate, item.endDate, item.location))}</td>
+                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top; text-align:right; line-height:1.8;">${formatCourseDateRangeHtml(item.startDate, item.endDate)}</td>
+                <td style="border:1px solid #d6d7d4; padding:10px; vertical-align:top; text-align:center;">${escapeHtml(item.location)}</td>
               </tr>
             `,
           )
           .join('')}
-        <tr style="background:#f6f8f8; font-weight:700;">
-          <td style="border:1px solid #d6d7d4; padding:10px;">المجموع</td>
-          <td style="border:1px solid #d6d7d4; padding:10px;">${courses.length}</td>
-          <td style="border:1px solid #d6d7d4; padding:10px;">${totalParticipants}</td>
-          <td style="border:1px solid #d6d7d4; padding:10px;"></td>
-          <td style="border:1px solid #d6d7d4; padding:10px;"></td>
-          <td style="border:1px solid #d6d7d4; padding:10px;"></td>
+        <tr style="background:#f1f5f5; font-weight:700;">
+          <td style="border:1px solid #d6d7d4; padding:10px; text-align:right;">المجموع</td>
+          <td style="border:1px solid #d6d7d4; padding:10px; text-align:center;">${courses.length}</td>
+          <td style="border:1px solid #d6d7d4; padding:10px; text-align:center;">${totalParticipants}</td>
+          <td style="border:1px solid #d6d7d4; padding:10px;" colspan="3"></td>
         </tr>
       </tbody>
     </table>
@@ -866,21 +880,19 @@ function buildDraftHtmlDocument(subject: string, bodyHtml: string) {
   </html>`;
 }
 
-function buildOutlookDraftEml(to: string, cc: string, subject: string, bodyHtml: string) {
+async function buildOutlookDraftEml(
+  to: string,
+  cc: string,
+  subject: string,
+  bodyHtml: string,
+  attachments: UploadedAttachment[] = [],
+) {
   const htmlDocument = buildDraftHtmlDocument(subject, bodyHtml);
   const plainText = toPlainText(stripLeadingSubjectRow(bodyHtml));
-
-  const encodeBase64Utf8 = (value: string) => {
-    if (typeof window !== 'undefined') {
-      return window.btoa(unescape(encodeURIComponent(value)));
-    }
-    return Buffer.from(value, 'utf8').toString('base64');
-  };
-
-  const boundary = `_smart_mail_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-  const encodedText = wrapBase64(encodeBase64Utf8(plainText));
-  const encodedHtml = wrapBase64(encodeBase64Utf8(htmlDocument));
+  const alternativeBoundary = `_alt_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  const mixedBoundary = `_mix_${Date.now()}_${Math.random().toString(16).slice(2)}`;
   const dateHeader = new Date().toUTCString();
+
   const headerLines = [
     'X-Unsent: 1',
     `To: ${to}`,
@@ -890,27 +902,51 @@ function buildOutlookDraftEml(to: string, cc: string, subject: string, bodyHtml:
     `Date: ${dateHeader}`,
     'MIME-Version: 1.0',
     'Content-Language: ar-SA',
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
   ];
 
-  const bodyLines = [
-    `--${boundary}`,
-    'Content-Type: text/plain; charset="UTF-8"',
-    'Content-Transfer-Encoding: base64',
-    '',
-    encodedText,
-    '',
-    `--${boundary}`,
-    'Content-Type: text/html; charset="UTF-8"',
-    'Content-Transfer-Encoding: base64',
-    '',
-    encodedHtml,
-    '',
-    `--${boundary}--`,
-    '',
-  ];
+  const parts: string[] = [];
+  parts.push(`--${mixedBoundary}`);
+  parts.push(`Content-Type: multipart/alternative; boundary="${alternativeBoundary}"`);
+  parts.push('');
 
-  return `${headerLines.join('\r\n')}\r\n\r\n${bodyLines.join('\r\n')}`;
+  parts.push(`--${alternativeBoundary}`);
+  parts.push('Content-Type: text/plain; charset="UTF-8"');
+  parts.push('Content-Transfer-Encoding: base64');
+  parts.push('');
+  parts.push(wrapBase64(typeof window !== 'undefined' ? window.btoa(unescape(encodeURIComponent(plainText))) : Buffer.from(plainText, 'utf8').toString('base64')));
+  parts.push('');
+
+  parts.push(`--${alternativeBoundary}`);
+  parts.push('Content-Type: text/html; charset="UTF-8"');
+  parts.push('Content-Transfer-Encoding: base64');
+  parts.push('');
+  parts.push(wrapBase64(typeof window !== 'undefined' ? window.btoa(unescape(encodeURIComponent(htmlDocument))) : Buffer.from(htmlDocument, 'utf8').toString('base64')));
+  parts.push('');
+  parts.push(`--${alternativeBoundary}--`);
+  parts.push('');
+
+  for (const attachment of attachments) {
+    const safeName = sanitizeAttachmentFilename(attachment.name);
+    const contentType = attachment.type || 'application/octet-stream';
+    const encodedName = encodeURIComponent(safeName);
+    parts.push(`--${mixedBoundary}`);
+    parts.push(`Content-Type: ${contentType}; name*=UTF-8''${encodedName}`);
+    parts.push('Content-Transfer-Encoding: base64');
+    parts.push(`Content-Disposition: attachment; filename*=UTF-8''${encodedName}`);
+    parts.push('');
+    parts.push(wrapBase64(attachment.data));
+    parts.push('');
+  }
+
+  parts.push(`--${mixedBoundary}--`);
+  parts.push('');
+
+  return `${headerLines.join('
+')}
+
+${parts.join('
+')}`;
 }
 
 function buildDraftWindowHtml(to: string, cc: string, subject: string, bodyHtml: string) {
@@ -1153,6 +1189,8 @@ export default function HomePage() {
   const [securityOther, setSecurityOther] = useState('');
   const [securityGate, setSecurityGate] = useState('4');
   const [attachmentsRequired, setAttachmentsRequired] = useState(true);
+  const [securityAttachments, setSecurityAttachments] = useState<UploadedAttachment[]>([]);
+  const [attachmentInputKey, setAttachmentInputKey] = useState(0);
 
   const [medicalExtra, setMedicalExtra] = useState('');
   const [supportSelections, setSupportSelections] = useState<string[]>([]);
@@ -1218,6 +1256,8 @@ export default function HomePage() {
     setSecurityOther('');
     setSecurityGate('4');
     setAttachmentsRequired(true);
+    setSecurityAttachments([]);
+    setAttachmentInputKey((prev) => prev + 1);
     setMedicalExtra('');
     setSupportSelections([]);
     setSupportOther('');
@@ -1450,6 +1490,7 @@ export default function HomePage() {
       `;
       extra = `
         ${attachmentsRequired ? '<p style="margin:14px 0 12px 0; font-weight:700; color:#7c1e3e;">كما نحيطكم بأن القوائم والمرفقات التعريفية بالمشاركين ستكون مرفقة مع البريد لتمكين فرق الأمن من التحقق والسماح بالدخول والوصول إلى مبنى التدريب.</p>' : ''}
+        ${attachmentsRequired && securityAttachments.length ? `<div style="margin:0 0 12px 0; border:1px solid #eadfcb; background:#fff8ee; padding:12px; color:#7c1e3e;"><div style="font-weight:700; margin-bottom:6px;">المرفقات التي ستدرج في المسودة:</div><div>${securityAttachments.map((item) => `• ${escapeHtml(item.name)}`).join('<br />')}</div></div>` : ''}
         <div style="margin-top:16px; white-space:pre-line; border:1px solid #d6d7d4; padding:12px; background:#fff;">${escapeHtml(buildSecurityText())}</div>
       `;
     }
@@ -1534,6 +1575,7 @@ export default function HomePage() {
       securityOther,
       securityGate,
       attachmentsRequired,
+      securityAttachments,
       medicalExtra,
       supportSelections,
       supportOther,
@@ -1562,7 +1604,36 @@ export default function HomePage() {
     }
   }
 
-  function openDraft() {
+  async function handleSecurityAttachmentsChange(files: FileList | null) {
+    if (!files || !files.length) return;
+
+    try {
+      const uploaded = await Promise.all(
+        Array.from(files).map(async (file) => ({
+          id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name: file.name,
+          type: file.type || 'application/octet-stream',
+          size: file.size,
+          data: await readFileAsBase64(file),
+        })),
+      );
+
+      setSecurityAttachments((prev) => {
+        const existing = new Set(prev.map((item) => `${item.name}-${item.size}`));
+        return [...prev, ...uploaded.filter((item) => !existing.has(`${item.name}-${item.size}`))];
+      });
+      setAttachmentInputKey((prev) => prev + 1);
+      setSystemNotice(`تمت إضافة ${uploaded.length} مرفق/مرفقات لمسودة الأمن والسلامة.`);
+    } catch {
+      setSystemNotice('تعذر قراءة المرفقات الحالية. حاول مرة أخرى.');
+    }
+  }
+
+  function removeSecurityAttachment(id: string) {
+    setSecurityAttachments((prev) => prev.filter((item) => item.id !== id));
+  }
+
+  async function openDraft() {
     if (!selectedDepartment || !selectedDeptData) {
       setSystemNotice('اختر الإدارة التي تريد أن ترسل لها الرسالة أولًا.');
       return;
@@ -1573,8 +1644,14 @@ export default function HomePage() {
       return;
     }
 
+    if (selectedDepartment === 'security' && attachmentsRequired && !securityAttachments.length) {
+      setSystemNotice('تم تحديد وجود مرفقات للأمن والسلامة، لكن لم يتم رفع أي ملف بعد.');
+      return;
+    }
+
     try {
-      const eml = buildOutlookDraftEml(selectedDeptData.emailTo, cc, autoSubject, previewHtml);
+      const draftAttachments = selectedDepartment === 'security' && attachmentsRequired ? securityAttachments : [];
+      const eml = await buildOutlookDraftEml(selectedDeptData.emailTo, cc, autoSubject, previewHtml, draftAttachments);
       const blob = new Blob([eml], { type: 'message/rfc822;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -1584,7 +1661,7 @@ export default function HomePage() {
       link.click();
       document.body.removeChild(link);
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setSystemNotice('تم تنزيل مسودة Outlook بصيغة EML. افتح الملف في Outlook وستظهر الرسالة كمسودة منسقة.');
+      setSystemNotice(`تم تنزيل مسودة Outlook بصيغة EML${selectedDepartment === 'security' && attachmentsRequired && securityAttachments.length ? ' مع المرفقات' : ''}. افتح الملف في Outlook وستظهر الرسالة كمسودة منسقة.`);
     } catch {
       setSystemNotice('تعذر إنشاء مسودة Outlook حاليًا.');
     }
@@ -1618,6 +1695,7 @@ export default function HomePage() {
       securityOther,
       securityGate,
       attachmentsRequired,
+      securityAttachments,
       medicalExtra,
       supportSelections,
       supportOther,
@@ -1664,6 +1742,8 @@ export default function HomePage() {
       setSecurityOther(snapshot.securityOther);
       setSecurityGate(snapshot.securityGate);
       setAttachmentsRequired(snapshot.attachmentsRequired);
+      setSecurityAttachments([]);
+      setAttachmentInputKey((prev) => prev + 1);
       setMedicalExtra(snapshot.medicalExtra);
       setSupportSelections(snapshot.supportSelections);
       setSupportOther(snapshot.supportOther);
@@ -2042,6 +2122,30 @@ export default function HomePage() {
                         </div>
                         {securitySelections.includes('أخرى') ? <div><label className="mb-1 block text-sm text-gray-600">طلب أمني إضافي</label><textarea value={securityOther} onChange={(e) => setSecurityOther(e.target.value)} rows={3} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="اكتب الطلب كما تريده فقط، والمنصة ستصوغه بصياغة احترافية." /></div> : null}
                         <label className="flex items-center gap-2 text-sm font-semibold text-[#016564]"><input type="checkbox" checked={attachmentsRequired} onChange={(e) => setAttachmentsRequired(e.target.checked)} />توجد مرفقات تعريفية بالمشاركين مرفقة مع البريد</label>
+                        {attachmentsRequired ? (
+                          <div className="rounded-2xl border border-[#e6e9e9] p-4">
+                            <div className="mb-2 text-sm font-semibold text-[#016564]">مرفقات الأمن والسلامة</div>
+                            <input
+                              key={attachmentInputKey}
+                              type="file"
+                              multiple
+                              accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png"
+                              onChange={(e) => handleSecurityAttachmentsChange(e.target.files)}
+                              className="block w-full rounded-xl border border-[#d6d7d4] px-3 py-2 text-sm"
+                            />
+                            <div className="mt-2 text-xs text-[#8c6968]">يمكنك رفع القوائم أو المرفقات التعريفية، وسيتم إدراجها داخل مسودة Outlook للأمن والسلامة.</div>
+                            {securityAttachments.length ? (
+                              <div className="mt-3 space-y-2">
+                                {securityAttachments.map((attachment) => (
+                                  <div key={attachment.id} className="flex items-center justify-between rounded-xl border border-[#e6e9e9] bg-[#f8f9f9] px-3 py-2 text-sm">
+                                    <div className="min-w-0 flex-1 truncate text-[#1f2937]">{attachment.name}</div>
+                                    <button type="button" onClick={() => removeSecurityAttachment(attachment.id)} className="mr-3 text-[#7c1e3e]">حذف</button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </>
                     )}
 
