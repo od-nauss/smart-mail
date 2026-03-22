@@ -206,7 +206,7 @@ const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', '�
 const arabicWeekdays = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 const HEADER_CANDIDATES = {
-  title: ['اسم التدريب', 'اسم الدورة', 'عنوان الدورة', 'اسم النشاط التدريبي'],
+  title: ['اسم التدريب', 'اسم الدورة', 'عنوان الدورة'],
   period: ['توقيت', 'الفترة', 'نوع الفترة'],
   participants: ['الحد الأقصى للمقعد', 'عدد المتدربين', 'عدد المشاركين'],
   startDate: ['تاريخ البدء', 'تاريخ البداية'],
@@ -214,17 +214,6 @@ const HEADER_CANDIDATES = {
   executionPlace: ['مكان التنفيذ'],
   hall: ['القاعة', 'مكان تنفيذ القاعة'],
   location: ['القاعة', 'مكان تنفيذ القاعة', 'مكان التنفيذ', 'الموقع'],
-};
-
-const MY_COURSES_HEADERS = {
-  title: 'اسم النشاط التدريبي',
-  executionPlace: 'مكان التنفيذ',
-  startDate: 'تاريخ البدء',
-  endDate: 'تاريخ الانتهاء',
-  status: 'الحالة',
-  coordinator: 'اسم منسق التدريب',
-  hall: 'القاعة',
-  actions: 'الإجراءات',
 };
 
 const DEFAULT_LMS_HEADERS = [
@@ -736,32 +725,6 @@ function parseCourseLine(line: string): CourseRecord | null {
   return buildCourseRecord({ title, period, participants, startDate, endDate, location: locationMatch.loc });
 }
 
-function buildRecordFromMyCoursesRow(row: Record<string, unknown>) {
-  const title = String(row[MY_COURSES_HEADERS.title] ?? '').trim();
-  const status = normalizeHeader(String(row[MY_COURSES_HEADERS.status] ?? '').trim());
-  const startDate = parseExcelDateValue(row[MY_COURSES_HEADERS.startDate]);
-  const endDate = parseExcelDateValue(row[MY_COURSES_HEADERS.endDate]);
-  const hall = String(row[MY_COURSES_HEADERS.hall] ?? '').trim();
-  const executionPlace = String(row[MY_COURSES_HEADERS.executionPlace] ?? '').trim();
-
-  if (!title || !startDate || !endDate) return null;
-  if (status && !status.includes(normalizeHeader('مؤكد'))) return null;
-
-  const normalizedExecutionPlace = normalizeHeader(executionPlace);
-  const location = /لندن|باريس|فرنسا|خارجي|خارج/i.test(normalizedExecutionPlace)
-    ? 'خارجي'
-    : normalizeLocation(hall || executionPlace);
-
-  return {
-    title,
-    period: '',
-    participants: '',
-    startDate,
-    endDate,
-    location: location || 'خارجي',
-  } satisfies CourseRecord;
-}
-
 function parseStructuredPastedRows(text: string) {
   const lines = text
     .split(/\r?\n/)
@@ -775,88 +738,6 @@ function parseStructuredPastedRows(text: string) {
     .filter((cells) => cells.some((cell) => cell));
 
   if (!rows.length) return [];
-
-  const lmsMyCoursesHeaderIndex = rows.findIndex((cells) => {
-    const line = normalizeHeader(cells.join(' '));
-    return (
-      line.includes(normalizeHeader('اسم النشاط التدريبي')) &&
-      line.includes(normalizeHeader('تاريخ البدء')) &&
-      line.includes(normalizeHeader('تاريخ الانتهاء')) &&
-      line.includes(normalizeHeader('الحالة')) &&
-      line.includes(normalizeHeader('القاعة'))
-    );
-  });
-
-  if (lmsMyCoursesHeaderIndex >= 0) {
-    const headers = rows[lmsMyCoursesHeaderIndex].map((header, index) => header || `col_${index}`);
-    const dataRows = rows
-      .slice(lmsMyCoursesHeaderIndex + 1)
-      .filter((cells) => cells.some((cell) => cell));
-
-    const records: CourseRecord[] = [];
-
-    for (const cells of dataRows) {
-      const row = Object.fromEntries(headers.map((header, index) => [header, cells[index] || '']));
-
-      const status = String(
-        row['الحالة'] ||
-          row['Status'] ||
-          row['status'] ||
-          ''
-      ).trim();
-
-      if (status && !normalizeHeader(status).includes(normalizeHeader('مؤكد'))) {
-        continue;
-      }
-
-      const title = String(
-        row['اسم النشاط التدريبي'] ||
-          row['اسم التدريب'] ||
-          row['اسم الدورة'] ||
-          ''
-      ).trim();
-
-      const startDate = parseExcelDateValue(
-        row['تاريخ البدء'] ||
-          row['تاريخ البداية'] ||
-          ''
-      );
-
-      const endDate = parseExcelDateValue(
-        row['تاريخ الانتهاء'] ||
-          row['تاريخ النهاية'] ||
-          ''
-      );
-
-      const room = String(
-        row['القاعة'] ||
-          row['قاعة'] ||
-          ''
-      ).trim();
-
-      const executionPlace = String(
-        row['مكان التنفيذ'] ||
-          ''
-      ).trim();
-
-      const location = room || (normalizeHeader(executionPlace).includes(normalizeHeader('لندن')) ? 'خارجي' : executionPlace);
-
-      if (!title || !startDate || !endDate || !location) {
-        continue;
-      }
-
-      records.push({
-        title,
-        period: '',
-        participants: '',
-        startDate,
-        endDate,
-        location: normalizeLocation(location),
-      });
-    }
-
-    return records;
-  }
 
   const headerIndex = rows.findIndex((cells) => {
     const line = normalizeHeader(cells.join(' '));
@@ -1461,25 +1342,6 @@ export default function HomePage() {
     setInputMode('manual');
   }
 
-  function updateCourseField(index: number, field: keyof CourseRecord, value: string) {
-    setCourses((prev) => {
-      const next = prev.map((item, itemIndex) =>
-        itemIndex === index
-          ? {
-              ...item,
-              [field]: field === 'period' ? normalizePeriod(value) : field === 'location' ? normalizeLocation(value) : value,
-            }
-          : item
-      );
-
-      if (field === 'startDate' || field === 'endDate') {
-        setStartDate(getEarliestStartDate(next));
-      }
-
-      return next;
-    });
-  }
-
   function deleteCourse(index: number) {
     setCourses((prev) => prev.filter((_, i) => i !== index));
     if (editingIndex === index) resetCourseForm();
@@ -1521,7 +1383,7 @@ export default function HomePage() {
   function handlePasteConvert() {
     const rows = parseRowsFromPastedText(pastedText);
     if (!rows.length) {
-      setSystemNotice('تعذر فهم النص الملصوق. الصق جدول دوراتي التدريبية من LMS أو الصيغة الحرة السابقة.');
+      setSystemNotice('تعذر فهم النص الملصوق. الصق السطور كما هي من الجدول أو من Excel.');
       return;
     }
     setCourses(rows);
@@ -2090,7 +1952,7 @@ export default function HomePage() {
                 })}
               </section>
 
-              <section className="grid gap-5 lg:grid-cols-[1.12fr_1fr]">
+              <section className="space-y-5">
                 <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-[#016564]">النموذج الأسبوعي</h2>
 
@@ -2140,7 +2002,7 @@ export default function HomePage() {
                           {fileName ? <div className="text-sm text-[#016564]">الملف الحالي: {fileName}</div> : null}
                           {importSummary ? <div className="text-xs font-medium text-[#498983]">{importSummary}</div> : null}
                         </div>
-                        <div className="mt-2 text-xs text-[#8c6968]">الأعمدة التي تلتقطها المنصة تلقائيًا من Excel: اسم التدريب | توقيت | الحد الأقصى للمقعد | تاريخ البدء | تاريخ الانتهاء | مكان التنفيذ | القاعة</div>
+                        <div className="mt-2 text-xs text-[#8c6968]">الأعمدة التي تلتقطها المنصة تلقائيًا من LMS: اسم الدورة باللغة العربية | الفترة | عدد المتدربين | تاريخ البداية | تاريخ النهاية | مكان التنفيذ</div>
                       </div>
                     )}
 
@@ -2218,71 +2080,15 @@ export default function HomePage() {
                             </thead>
                             <tbody>
                               {courses.map((course, index) => (
-                                <tr key={`${course.title}-${index}`} className={index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9f9]'}>
-                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top min-w-[280px]">
-                                    <textarea
-                                      value={course.title}
-                                      onChange={(e) => updateCourseField(index, 'title', e.target.value)}
-                                      rows={3}
-                                      className="w-full rounded-lg border border-[#d6d7d4] px-2 py-2 text-sm text-right outline-none focus:border-[#016564]"
-                                    />
-                                  </td>
-                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top min-w-[120px]">
-                                    <select
-                                      value={course.period}
-                                      onChange={(e) => updateCourseField(index, 'period', e.target.value)}
-                                      className="w-full rounded-lg border border-[#d6d7d4] px-2 py-2 text-sm outline-none focus:border-[#016564]"
-                                    >
-                                      <option value="">اختر</option>
-                                      <option value="صباحية">صباحية</option>
-                                      <option value="مسائية">مسائية</option>
-                                    </select>
-                                  </td>
-                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top min-w-[110px]">
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      value={course.participants}
-                                      onChange={(e) => updateCourseField(index, 'participants', e.target.value)}
-                                      className="w-full rounded-lg border border-[#d6d7d4] px-2 py-2 text-sm outline-none focus:border-[#016564]"
-                                    />
-                                  </td>
-                                  <td className="border border-[#d6d7d4] px-3 py-2 align-top whitespace-nowrap">{buildDurationText(course.startDate, course.endDate, course.location)}</td>
-                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top min-w-[140px]">
-                                    <input
-                                      type="date"
-                                      value={course.startDate}
-                                      onChange={(e) => updateCourseField(index, 'startDate', e.target.value)}
-                                      className="w-full rounded-lg border border-[#d6d7d4] px-2 py-2 text-sm outline-none focus:border-[#016564]"
-                                    />
-                                  </td>
-                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top min-w-[140px]">
-                                    <input
-                                      type="date"
-                                      value={course.endDate}
-                                      onChange={(e) => updateCourseField(index, 'endDate', e.target.value)}
-                                      className="w-full rounded-lg border border-[#d6d7d4] px-2 py-2 text-sm outline-none focus:border-[#016564]"
-                                    />
-                                  </td>
-                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top min-w-[160px]">
-                                    <select
-                                      value={course.location}
-                                      onChange={(e) => updateCourseField(index, 'location', e.target.value)}
-                                      className="w-full rounded-lg border border-[#d6d7d4] px-2 py-2 text-sm outline-none focus:border-[#016564]"
-                                    >
-                                      <option value="">اختر الموقع</option>
-                                      {locations.map((location) => (
-                                        <option key={location} value={location}>
-                                          {location}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </td>
-                                  <td className="border border-[#d6d7d4] px-3 py-2 align-top">
-                                    <div className="flex gap-2">
-                                      <button type="button" onClick={() => deleteCourse(index)} className="text-[#7c1e3e]">حذف</button>
-                                    </div>
-                                  </td>
+                                <tr key={`${course.title}-${index}`} className="bg-white">
+                                  <td className="border border-[#d6d7d4] px-3 py-2">{course.title}</td>
+                                  <td className="border border-[#d6d7d4] px-3 py-2">{course.period}</td>
+                                  <td className="border border-[#d6d7d4] px-3 py-2">{course.participants}</td>
+                                  <td className="border border-[#d6d7d4] px-3 py-2">{buildDurationText(course.startDate, course.endDate, course.location)}</td>
+                                  <td className="border border-[#d6d7d4] px-3 py-2">{formatDisplayDate(course.startDate)}</td>
+                                  <td className="border border-[#d6d7d4] px-3 py-2">{formatDisplayDate(course.endDate)}</td>
+                                  <td className="border border-[#d6d7d4] px-3 py-2">{course.location}</td>
+                                  <td className="border border-[#d6d7d4] px-3 py-2"><div className="flex gap-2"><button type="button" onClick={() => editCourse(index)} className="text-[#016564]">تعديل</button><button type="button" onClick={() => deleteCourse(index)} className="text-[#7c1e3e]">حذف</button></div></td>
                                 </tr>
                               ))}
                             </tbody>
