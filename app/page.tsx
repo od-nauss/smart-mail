@@ -880,6 +880,13 @@ function buildDraftHtmlDocument(subject: string, bodyHtml: string) {
   </html>`;
 }
 
+function sanitizeAttachmentFilename(filename: string) {
+  return filename
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim() || 'attachment';
+}
+
 async function buildOutlookDraftEml(
   to: string,
   cc: string,
@@ -942,7 +949,11 @@ async function buildOutlookDraftEml(
   parts.push(`--${mixedBoundary}--`);
   parts.push('');
 
-  return `${headerLines.join('\r\n')}\r\n\r\n${parts.join('\r\n')}`;
+  return `${headerLines.join('
+')}
+
+${parts.join('
+')}`;
 }
 
 function buildDraftWindowHtml(to: string, cc: string, subject: string, bodyHtml: string) {
