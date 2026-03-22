@@ -66,6 +66,7 @@ type WeeklySnapshot = {
   securityOther: string;
   securityGate: string;
   attachmentsRequired: boolean;
+  securityAttachments: DraftAttachment[];
   medicalExtra: string;
   supportSelections: string[];
   supportOther: string;
