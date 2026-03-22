@@ -943,6 +943,7 @@ async function buildOutlookDraftEml(
   parts.push('');
 
   return `${headerLines.join('\r\n')}\r\n\r\n${parts.join('\r\n')}`;
+}
 
 function buildDraftWindowHtml(to: string, cc: string, subject: string, bodyHtml: string) {
   const cleanedBody = stripLeadingSubjectRow(bodyHtml).replace(/text-align:center/gi, 'text-align:right');
