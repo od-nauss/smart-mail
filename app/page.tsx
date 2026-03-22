@@ -244,6 +244,15 @@ const DEFAULT_LMS_HEADERS = [
   'السعر',
 ];
 
+const LMS_MY_COURSES_HEADERS = {
+  title: 'اسم النشاط التدريبي',
+  executionPlace: 'مكان التنفيذ',
+  startDate: 'تاريخ البدء',
+  endDate: 'تاريخ الانتهاء',
+  status: 'الحالة',
+  hall: 'القاعة',
+};
+
 const lmsLocationHints: Array<{ pattern: RegExp; value: string }> = [
   { pattern: /مركز\s*السلامة\s*المرورية/i, value: 'مركز السلامة المرورية' },
   { pattern: /مركز\s*الأمن\s*السيبراني/i, value: 'مركز الأمن السيبراني' },
@@ -345,13 +354,20 @@ function parseExcelDateValue(value: unknown) {
   return '';
 }
 
+function isExternalLocation(location?: string) {
+  const normalized = normalizeLocation(String(location || '').trim());
+  if (!normalized) return false;
+  if (normalized === 'خارجي') return true;
+  return !locations.includes(normalized);
+}
+
 function countWorkingDays(start: string, end: string, location?: string) {
   if (!start || !end) return 0;
   const startDate = createLocalDate(start);
   const endDate = createLocalDate(end);
   if (!startDate || !endDate || startDate > endDate) return 0;
 
-  const isExternal = normalizeLocation(String(location || '').trim()) === 'خارجي';
+  const isExternal = isExternalLocation(location);
   const weekendDays = isExternal ? new Set([0, 6]) : new Set([5, 6]);
 
   let count = 0;
@@ -605,7 +621,7 @@ function buildCourseRecord(input: {
   const endDate = parseExcelDateValue(input.endDate);
   const location = normalizeLocation(String(input.location ?? '').trim());
 
-  if (!title || !period || !participants || !startDate || !endDate || !location) return null;
+  if (!title || !startDate || !endDate || !location) return null;
 
   return { title, period, participants, startDate, endDate, location };
 }
@@ -725,6 +741,54 @@ function parseCourseLine(line: string): CourseRecord | null {
   return buildCourseRecord({ title, period, participants, startDate, endDate, location: locationMatch.loc });
 }
 
+function buildRecordFromMyCoursesRow(row: Record<string, unknown>) {
+  const title = String(row[LMS_MY_COURSES_HEADERS.title] ?? '').trim();
+  const executionPlace = String(row[LMS_MY_COURSES_HEADERS.executionPlace] ?? '').trim();
+  const hall = String(row[LMS_MY_COURSES_HEADERS.hall] ?? '').trim();
+  const startDate = row[LMS_MY_COURSES_HEADERS.startDate];
+  const endDate = row[LMS_MY_COURSES_HEADERS.endDate];
+  const status = normalizeHeader(String(row[LMS_MY_COURSES_HEADERS.status] ?? '').trim());
+
+  if (!status || !status.includes(normalizeHeader('مؤكد'))) return null;
+
+  const normalizedHall = normalizeLocation(hall);
+  const isUniversityInternal = normalizeHeader(executionPlace).includes(normalizeHeader('جامعة نايف العربية للعلوم الأمنية'));
+  const location = isUniversityInternal ? (normalizedHall || 'خارجي') : 'خارجي';
+
+  return buildCourseRecord({
+    title,
+    period: '',
+    participants: '',
+    startDate,
+    endDate,
+    location,
+  });
+}
+
+function parseMyCoursesRows(rows: string[][]) {
+  if (!rows.length) return [];
+
+  const headerIndex = rows.findIndex((cells) => {
+    const line = normalizeHeader(cells.join(' '));
+    return (
+      line.includes(normalizeHeader(LMS_MY_COURSES_HEADERS.title)) &&
+      line.includes(normalizeHeader(LMS_MY_COURSES_HEADERS.startDate)) &&
+      line.includes(normalizeHeader(LMS_MY_COURSES_HEADERS.hall)) &&
+      line.includes(normalizeHeader(LMS_MY_COURSES_HEADERS.status))
+    );
+  });
+
+  if (headerIndex < 0) return [];
+
+  const headers = rows[headerIndex].map((header, index) => header || `col_${index}`);
+  const dataRows = rows.slice(headerIndex + 1).filter((cells) => cells.some((cell) => cell));
+
+  return dataRows
+    .map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] || ''])))
+    .map((row) => buildRecordFromMyCoursesRow(row as Record<string, unknown>))
+    .filter((item): item is CourseRecord => Boolean(item));
+}
+
 function parseStructuredPastedRows(text: string) {
   const lines = text
     .split(/\r?\n/)
@@ -738,6 +802,9 @@ function parseStructuredPastedRows(text: string) {
     .filter((cells) => cells.some((cell) => cell));
 
   if (!rows.length) return [];
+
+  const myCoursesRecords = parseMyCoursesRows(rows);
+  if (myCoursesRecords.length) return myCoursesRecords;
 
   const headerIndex = rows.findIndex((cells) => {
     const line = normalizeHeader(cells.join(' '));
@@ -1383,7 +1450,7 @@ export default function HomePage() {
   function handlePasteConvert() {
     const rows = parseRowsFromPastedText(pastedText);
     if (!rows.length) {
-      setSystemNotice('تعذر فهم النص الملصوق. الصق السطور كما هي من الجدول أو من Excel.');
+      setSystemNotice('تعذر فهم النص الملصوق. الصق جدول دوراتي التدريبية من LMS أو الصيغة الحرة المدعومة.');
       return;
     }
     setCourses(rows);
