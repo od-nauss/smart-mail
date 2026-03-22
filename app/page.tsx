@@ -2207,14 +2207,14 @@ export default function HomePage() {
                           <table className="w-full min-w-[920px] table-fixed border-collapse text-sm">
                             <thead>
                               <tr className="bg-[#016564] text-white">
-                                <th className="w-[230px] border border-[#d6d7d4] px-3 py-2">عنوان الدورة</th>
+                                <th className="w-[130px] border border-[#d6d7d4] px-3 py-2">عنوان الدورة</th>
                                 <th className="w-[92px] border border-[#d6d7d4] px-3 py-2">الفترة</th>
                                 <th className="w-[92px] border border-[#d6d7d4] px-3 py-2">المشاركون</th>
                                 <th className="w-[72px] border border-[#d6d7d4] px-3 py-2">المدة</th>
                                 <th className="w-[126px] border border-[#d6d7d4] px-3 py-2">تاريخ البداية</th>
                                 <th className="w-[126px] border border-[#d6d7d4] px-3 py-2">تاريخ النهاية</th>
-                                <th className="w-[138px] border border-[#d6d7d4] px-3 py-2">الموقع</th>
-                                <th className="w-[74px] border border-[#d6d7d4] px-3 py-2">إجراء</th>
+                                <th className="w-[130px] border border-[#d6d7d4] px-3 py-2">الموقع</th>
+                                <th className="w-[60px] border border-[#d6d7d4] px-3 py-2">إجراء</th>
                               </tr>
                             </thead>
                             <tbody>
