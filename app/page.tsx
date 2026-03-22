@@ -2090,7 +2090,133 @@ export default function HomePage() {
                 })}
               </section>
 
-              <section className="space-y-5">
+              <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.18fr)] items-start">
+                <div className="order-2 space-y-5 lg:order-1">
+                  <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h2 className="text-lg font-semibold text-[#016564]">المعاينة</h2>
+                      {selectedDeptData ? <div className="text-xs text-[#8c6968]">إلى: {selectedDeptData.emailTo}</div> : null}
+                    </div>
+                    <div ref={previewRef} className="min-h-[600px] rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4" dangerouslySetInnerHTML={{ __html: previewHtml || '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة، حدّد تاريخ البداية، أضف الدورات، وستُحدَّث المعاينة تلقائيًا.</div>' }} />
+                    <div className="sr-only" aria-hidden>
+                      <div
+                        ref={posterRef}
+                        style={{
+                          width: '1400px',
+                          background: 'linear-gradient(135deg, #f4f7f6 0%, #edf6f4 32%, #fdfcf9 100%)',
+                          padding: '36px',
+                          color: '#1f2937',
+                          fontFamily: 'Cairo, Arial, sans-serif',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            backgroundImage:
+                              'linear-gradient(180deg, rgba(1,101,100,0.05), transparent 22%), radial-gradient(circle at 12% 10%, rgba(208,178,132,0.22), transparent 18%), radial-gradient(circle at 88% 16%, rgba(1,101,100,0.12), transparent 16%), repeating-linear-gradient(135deg, rgba(208,178,132,0.04) 0, rgba(208,178,132,0.04) 2px, transparent 2px, transparent 26px)',
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: 'relative',
+                            border: '1px solid #e4d6bc',
+                            borderRadius: '30px',
+                            padding: '28px 30px',
+                            background: 'rgba(255,255,255,0.97)',
+                            boxShadow: '0 24px 60px rgba(1,101,100,0.12)',
+                            boxSizing: 'border-box',
+                          }}
+                        >
+                          <div style={{ textAlign: 'center', marginBottom: '22px', position: 'relative' }}>
+                            <div style={{position:'absolute', insetInlineStart:'0', top:'12px', width:'180px', height:'180px', borderRadius:'9999px', background:'radial-gradient(circle, rgba(208,178,132,0.18), transparent 68%)'}} />
+                            <img src={EXPORT_POSTER_LOGO} alt="شعار جامعة نايف" style={{ width: '420px', height: 'auto', objectFit: 'contain', margin: '0 auto 18px auto', display: 'block' }} />
+                            <div style={{ color: '#016564', fontSize: '30px', fontWeight: 500, letterSpacing:'0px' }}>
+                              الموضوع: {autoSubject}
+                            </div>
+                            <div style={{margin:'10px auto 0 auto', width:'180px', height:'4px', borderRadius:'999px', background:'linear-gradient(90deg, rgba(208,178,132,0.2), #d0b284, rgba(1,101,100,0.16))'}} />
+                          </div>
+
+                          <style>{`
+                            .poster-html * {
+                              box-sizing: border-box !important;
+                            }
+                            .poster-html table {
+                              width: 100% !important;
+                              border-collapse: collapse !important;
+                              table-layout: fixed !important;
+                              margin-top: 12px !important;
+                              margin-bottom: 14px !important;
+                            }
+                            .poster-html th,
+                            .poster-html td {
+                              border: 1px solid #d6d7d4 !important;
+                              padding: 10px 8px !important;
+                              font-size: 17px !important;
+                              line-height: 1.6 !important;
+                              vertical-align: middle !important;
+                              text-align: center !important;
+                              white-space: normal !important;
+                              word-break: break-word !important;
+                            }
+                            .poster-html th {
+                              background: #016564 !important;
+                              color: #ffffff !important;
+                              font-weight: 800 !important;
+                            }
+                            .poster-html tbody tr:nth-child(even) td {
+                              background: #f3f4f6 !important;
+                            }
+                            .poster-html p,
+                            .poster-html div,
+                            .poster-html span,
+                            .poster-html li {
+                              font-size: 18px !important;
+                              line-height: 1.9 !important;
+                              text-align: right !important;
+                              font-family: Cairo, Arial, sans-serif !important;
+                              font-weight: 400 !important;
+                            }
+                            .poster-html ul {
+                              margin: 0 !important;
+                              padding-right: 18px !important;
+                            }
+                          `}</style>
+
+                          <div className="poster-html" dangerouslySetInnerHTML={{ __html: stripLeadingSubjectRow(previewHtml || '') }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold text-[#016564]">أرشيف الرسائل</h2><div className="text-xs text-[#8c6968]">آخر 25 نسخة</div></div>
+                    <div className="space-y-3">
+                      {archiveRecords.length ? archiveRecords.map((record) => {
+                        const dept = departments.find((item) => item.key === record.department);
+                        return (
+                          <div key={record.id} className="rounded-2xl border border-[#eef1f1] p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <div className="text-sm font-semibold text-[#016564]">{record.weekLabel}</div>
+                                <div className="text-xs text-[#8c6968]">{dept?.title} - {record.subject}</div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button type="button" onClick={() => loadFromArchive(record)} className="text-sm font-semibold text-[#016564]">استدعاء</button>
+                                <button type="button" onClick={() => deleteArchiveRecord(record.id)} className="text-sm font-semibold text-[#7c1e3e]">حذف</button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }) : <div className="rounded-2xl border border-dashed border-[#d6d7d4] p-4 text-sm text-[#8c6968]">لا توجد رسائل محفوظة بعد.</div>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="order-1 lg:order-2">
                 <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-[#016564]">النموذج الأسبوعي</h2>
 
@@ -2415,130 +2541,6 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
-
-                <div className="space-y-5">
-                  <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
-                    <div className="mb-3 flex items-center justify-between">
-                      <h2 className="text-lg font-semibold text-[#016564]">المعاينة</h2>
-                      {selectedDeptData ? <div className="text-xs text-[#8c6968]">إلى: {selectedDeptData.emailTo}</div> : null}
-                    </div>
-                    <div ref={previewRef} className="min-h-[600px] rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4" dangerouslySetInnerHTML={{ __html: previewHtml || '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة، حدّد تاريخ البداية، أضف الدورات، وستُحدَّث المعاينة تلقائيًا.</div>' }} />
-                    <div className="sr-only" aria-hidden>
-                      <div
-                        ref={posterRef}
-                        style={{
-                          width: '1400px',
-                          background: 'linear-gradient(135deg, #f4f7f6 0%, #edf6f4 32%, #fdfcf9 100%)',
-                          padding: '36px',
-                          color: '#1f2937',
-                          fontFamily: 'Cairo, Arial, sans-serif',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          boxSizing: 'border-box',
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            backgroundImage:
-                              'linear-gradient(180deg, rgba(1,101,100,0.05), transparent 22%), radial-gradient(circle at 12% 10%, rgba(208,178,132,0.22), transparent 18%), radial-gradient(circle at 88% 16%, rgba(1,101,100,0.12), transparent 16%), repeating-linear-gradient(135deg, rgba(208,178,132,0.04) 0, rgba(208,178,132,0.04) 2px, transparent 2px, transparent 26px)',
-                          }}
-                        />
-                        <div
-                          style={{
-                            position: 'relative',
-                            border: '1px solid #e4d6bc',
-                            borderRadius: '30px',
-                            padding: '28px 30px',
-                            background: 'rgba(255,255,255,0.97)',
-                            boxShadow: '0 24px 60px rgba(1,101,100,0.12)',
-                            boxSizing: 'border-box',
-                          }}
-                        >
-                          <div style={{ textAlign: 'center', marginBottom: '22px', position: 'relative' }}>
-                            <div style={{position:'absolute', insetInlineStart:'0', top:'12px', width:'180px', height:'180px', borderRadius:'9999px', background:'radial-gradient(circle, rgba(208,178,132,0.18), transparent 68%)'}} />
-                            <img src={EXPORT_POSTER_LOGO} alt="شعار جامعة نايف" style={{ width: '420px', height: 'auto', objectFit: 'contain', margin: '0 auto 18px auto', display: 'block' }} />
-                            <div style={{ color: '#016564', fontSize: '30px', fontWeight: 500, letterSpacing:'0px' }}>
-                              الموضوع: {autoSubject}
-                            </div>
-                            <div style={{margin:'10px auto 0 auto', width:'180px', height:'4px', borderRadius:'999px', background:'linear-gradient(90deg, rgba(208,178,132,0.2), #d0b284, rgba(1,101,100,0.16))'}} />
-                          </div>
-
-                          <style>{`
-                            .poster-html * {
-                              box-sizing: border-box !important;
-                            }
-                            .poster-html table {
-                              width: 100% !important;
-                              border-collapse: collapse !important;
-                              table-layout: fixed !important;
-                              margin-top: 12px !important;
-                              margin-bottom: 14px !important;
-                            }
-                            .poster-html th,
-                            .poster-html td {
-                              border: 1px solid #d6d7d4 !important;
-                              padding: 10px 8px !important;
-                              font-size: 17px !important;
-                              line-height: 1.6 !important;
-                              vertical-align: middle !important;
-                              text-align: center !important;
-                              white-space: normal !important;
-                              word-break: break-word !important;
-                            }
-                            .poster-html th {
-                              background: #016564 !important;
-                              color: #ffffff !important;
-                              font-weight: 800 !important;
-                            }
-                            .poster-html tbody tr:nth-child(even) td {
-                              background: #f3f4f6 !important;
-                            }
-                            .poster-html p,
-                            .poster-html div,
-                            .poster-html span,
-                            .poster-html li {
-                              font-size: 18px !important;
-                              line-height: 1.9 !important;
-                              text-align: right !important;
-                              font-family: Cairo, Arial, sans-serif !important;
-                              font-weight: 400 !important;
-                            }
-                            .poster-html ul {
-                              margin: 0 !important;
-                              padding-right: 18px !important;
-                            }
-                          `}</style>
-
-                          <div className="poster-html" dangerouslySetInnerHTML={{ __html: stripLeadingSubjectRow(previewHtml || '') }} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
-                    <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold text-[#016564]">أرشيف الرسائل</h2><div className="text-xs text-[#8c6968]">آخر 25 نسخة</div></div>
-                    <div className="space-y-3">
-                      {archiveRecords.length ? archiveRecords.map((record) => {
-                        const dept = departments.find((item) => item.key === record.department);
-                        return (
-                          <div key={record.id} className="rounded-2xl border border-[#eef1f1] p-3">
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <div className="text-sm font-semibold text-[#016564]">{record.weekLabel}</div>
-                                <div className="text-xs text-[#8c6968]">{dept?.title} - {record.subject}</div>
-                              </div>
-                              <div className="flex gap-2">
-                                <button type="button" onClick={() => loadFromArchive(record)} className="text-sm font-semibold text-[#016564]">استدعاء</button>
-                                <button type="button" onClick={() => deleteArchiveRecord(record.id)} className="text-sm font-semibold text-[#7c1e3e]">حذف</button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }) : <div className="rounded-2xl border border-dashed border-[#d6d7d4] p-4 text-sm text-[#8c6968]">لا توجد رسائل محفوظة بعد.</div>}
-                    </div>
-                  </div>
                 </div>
               </section>
             </>
