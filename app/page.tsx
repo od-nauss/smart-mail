@@ -764,28 +764,105 @@ function buildRecordFromMyCoursesRow(row: Record<string, unknown>) {
 
 function parseStructuredPastedRows(text: string) {
   const lines = text
-    .split(/
-?
-/)
-    .map((line) => line.replace(/ /g, ' ').trim())
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\u00A0/g, ' ').trim())
     .filter(Boolean);
 
-  if (!lines.length || !lines.some((line) => line.includes('	'))) return [];
+  if (!lines.length || !lines.some((line) => line.includes('\t'))) return [];
 
   const rows = lines
-    .map((line) => line.split('	').map((cell) => cell.replace(/ /g, ' ').trim()))
+    .map((line) => line.split('\t').map((cell) => cell.replace(/\u00A0/g, ' ').trim()))
     .filter((cells) => cells.some((cell) => cell));
 
   if (!rows.length) return [];
 
+  const lmsMyCoursesHeaderIndex = rows.findIndex((cells) => {
+    const line = normalizeHeader(cells.join(' '));
+    return (
+      line.includes(normalizeHeader('اسم النشاط التدريبي')) &&
+      line.includes(normalizeHeader('تاريخ البدء')) &&
+      line.includes(normalizeHeader('تاريخ الانتهاء')) &&
+      line.includes(normalizeHeader('الحالة')) &&
+      line.includes(normalizeHeader('القاعة'))
+    );
+  });
+
+  if (lmsMyCoursesHeaderIndex >= 0) {
+    const headers = rows[lmsMyCoursesHeaderIndex].map((header, index) => header || `col_${index}`);
+    const dataRows = rows
+      .slice(lmsMyCoursesHeaderIndex + 1)
+      .filter((cells) => cells.some((cell) => cell));
+
+    const records: CourseRecord[] = [];
+
+    for (const cells of dataRows) {
+      const row = Object.fromEntries(headers.map((header, index) => [header, cells[index] || '']));
+
+      const status = String(
+        row['الحالة'] ||
+          row['Status'] ||
+          row['status'] ||
+          ''
+      ).trim();
+
+      if (status && !normalizeHeader(status).includes(normalizeHeader('مؤكد'))) {
+        continue;
+      }
+
+      const title = String(
+        row['اسم النشاط التدريبي'] ||
+          row['اسم التدريب'] ||
+          row['اسم الدورة'] ||
+          ''
+      ).trim();
+
+      const startDate = parseDateCell(
+        row['تاريخ البدء'] ||
+          row['تاريخ البداية'] ||
+          ''
+      );
+
+      const endDate = parseDateCell(
+        row['تاريخ الانتهاء'] ||
+          row['تاريخ النهاية'] ||
+          ''
+      );
+
+      const room = String(
+        row['القاعة'] ||
+          row['قاعة'] ||
+          ''
+      ).trim();
+
+      const executionPlace = String(
+        row['مكان التنفيذ'] ||
+          ''
+      ).trim();
+
+      const location = room || (normalizeHeader(executionPlace).includes(normalizeHeader('لندن')) ? 'خارجي' : executionPlace);
+
+      if (!title || !startDate || !endDate || !location) {
+        continue;
+      }
+
+      records.push({
+        title,
+        period: '',
+        participants: '',
+        startDate,
+        endDate,
+        location: normalizeLocation(location),
+      });
+    }
+
+    return records;
+  }
+
   const headerIndex = rows.findIndex((cells) => {
     const line = normalizeHeader(cells.join(' '));
     return (
-      (HEADER_CANDIDATES.title.some((candidate) => line.includes(normalizeHeader(candidate))) &&
-        HEADER_CANDIDATES.startDate.some((candidate) => line.includes(normalizeHeader(candidate)))) ||
-      (line.includes(normalizeHeader(MY_COURSES_HEADERS.title)) &&
-        line.includes(normalizeHeader(MY_COURSES_HEADERS.status)) &&
-        line.includes(normalizeHeader(MY_COURSES_HEADERS.hall)))
+      HEADER_CANDIDATES.title.some((candidate) => line.includes(normalizeHeader(candidate))) &&
+      HEADER_CANDIDATES.startDate.some((candidate) => line.includes(normalizeHeader(candidate)))
     );
   });
 
@@ -794,17 +871,7 @@ function parseStructuredPastedRows(text: string) {
     const dataRows = rows.slice(headerIndex + 1).filter((cells) => cells.some((cell) => cell));
     const objects = dataRows.map((cells) =>
       Object.fromEntries(headers.map((header, index) => [header, cells[index] || '']))
-    ) as Record<string, unknown>[];
-
-    const isMyCoursesTable = headers.some((header) => normalizeHeader(header).includes(normalizeHeader(MY_COURSES_HEADERS.title)))
-      && headers.some((header) => normalizeHeader(header).includes(normalizeHeader(MY_COURSES_HEADERS.status)));
-
-    if (isMyCoursesTable) {
-      return objects
-        .map((row) => buildRecordFromMyCoursesRow(row))
-        .filter((item): item is CourseRecord => Boolean(item));
-    }
-
+    );
     return parseSheetRows(objects);
   }
 
