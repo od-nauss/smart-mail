@@ -816,13 +816,13 @@ function parseStructuredPastedRows(text: string) {
           ''
       ).trim();
 
-      const startDate = parseDateCell(
+      const startDate = parseExcelDateValue(
         row['تاريخ البدء'] ||
           row['تاريخ البداية'] ||
           ''
       );
 
-      const endDate = parseDateCell(
+      const endDate = parseExcelDateValue(
         row['تاريخ الانتهاء'] ||
           row['تاريخ النهاية'] ||
           ''
