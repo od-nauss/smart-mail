@@ -2090,7 +2090,8 @@ export default function HomePage() {
                 })}
               </section>
 
-              <section className="space-y-5">
+              <section className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.88fr)] items-start">
+                <div className="order-1 min-w-0">
                 <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-[#016564]">النموذج الأسبوعي</h2>
 
@@ -2147,7 +2148,7 @@ export default function HomePage() {
                     {inputMode === 'paste' && (
                       <div className="rounded-2xl border border-[#e6e9e9] p-4">
                         <label className="mb-1 block text-sm text-gray-600">الصق البيانات</label>
-                        <textarea value={pastedText} onChange={(e) => setPastedText(e.target.value)} rows={6} placeholder={`اسم الدورة باللغة العربية\tالفترة\tعدد المتدربين\tتاريخ البداية\tتاريخ النهاية\tمكان التنفيذ\nأو الصق السطر كما هو من الجدول`} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2 outline-none focus:border-[#016564]" />
+                        <textarea value={pastedText} onChange={(e) => setPastedText(e.target.value)} rows={6} placeholder={`اسم النشاط التدريبي\tمكان التنفيذ\tتاريخ البدء\tتاريخ الانتهاء\tالحالة\tاسم منسق التدريب\tالقاعة\tالإجراءات\nأو الصق الصيغة الحرة القديمة كمسار احتياطي`} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2 outline-none focus:border-[#016564]" />
                         <button type="button" onClick={handlePasteConvert} className="mt-2 rounded-xl bg-[#016564] px-4 py-2 text-sm font-semibold text-white">تحويل إلى جدول</button>
                       </div>
                     )}
@@ -2203,31 +2204,31 @@ export default function HomePage() {
                       <div className="rounded-2xl border border-[#e6e9e9] p-4">
                         <div className="mb-2 text-sm font-semibold text-[#016564]">جدول الدورات</div>
                         <div className="overflow-x-auto rounded-2xl border border-[#e6e9e9]">
-                          <table className="w-full min-w-[980px] table-fixed border-collapse text-sm">
+                          <table className="w-full min-w-[920px] table-fixed border-collapse text-sm">
                             <thead>
                               <tr className="bg-[#016564] text-white">
-                                <th className="w-[240px] border border-[#d6d7d4] px-3 py-2">عنوان الدورة</th>
-                                <th className="w-[100px] border border-[#d6d7d4] px-3 py-2">الفترة</th>
-                                <th className="w-[95px] border border-[#d6d7d4] px-3 py-2">المشاركون</th>
-                                <th className="w-[80px] border border-[#d6d7d4] px-3 py-2">المدة</th>
-                                <th className="w-[130px] border border-[#d6d7d4] px-3 py-2">تاريخ البداية</th>
-                                <th className="w-[130px] border border-[#d6d7d4] px-3 py-2">تاريخ النهاية</th>
-                                <th className="w-[145px] border border-[#d6d7d4] px-3 py-2">الموقع</th>
-                                <th className="w-[80px] border border-[#d6d7d4] px-3 py-2">إجراء</th>
+                                <th className="w-[230px] border border-[#d6d7d4] px-3 py-2">عنوان الدورة</th>
+                                <th className="w-[92px] border border-[#d6d7d4] px-3 py-2">الفترة</th>
+                                <th className="w-[92px] border border-[#d6d7d4] px-3 py-2">المشاركون</th>
+                                <th className="w-[72px] border border-[#d6d7d4] px-3 py-2">المدة</th>
+                                <th className="w-[126px] border border-[#d6d7d4] px-3 py-2">تاريخ البداية</th>
+                                <th className="w-[126px] border border-[#d6d7d4] px-3 py-2">تاريخ النهاية</th>
+                                <th className="w-[138px] border border-[#d6d7d4] px-3 py-2">الموقع</th>
+                                <th className="w-[74px] border border-[#d6d7d4] px-3 py-2">إجراء</th>
                               </tr>
                             </thead>
                             <tbody>
                               {courses.map((course, index) => (
                                 <tr key={`${course.title}-${index}`} className={index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9f9]'}>
-                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top">
+                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top min-w-[280px]">
                                     <textarea
                                       value={course.title}
                                       onChange={(e) => updateCourseField(index, 'title', e.target.value)}
                                       rows={2}
-                                      className="w-full min-h-[72px] rounded-lg border border-[#d6d7d4] px-2 py-2 text-sm leading-6 text-right outline-none focus:border-[#016564]"
+                                      className="w-full rounded-lg border border-[#d6d7d4] px-2 py-2 text-sm text-right outline-none focus:border-[#016564] leading-6"
                                     />
                                   </td>
-                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top">
+                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top min-w-[120px]">
                                     <select
                                       value={course.period}
                                       onChange={(e) => updateCourseField(index, 'period', e.target.value)}
@@ -2238,7 +2239,7 @@ export default function HomePage() {
                                       <option value="مسائية">مسائية</option>
                                     </select>
                                   </td>
-                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top">
+                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top min-w-[110px]">
                                     <input
                                       type="number"
                                       min="0"
@@ -2248,7 +2249,7 @@ export default function HomePage() {
                                     />
                                   </td>
                                   <td className="border border-[#d6d7d4] px-3 py-2 align-top whitespace-nowrap">{buildDurationText(course.startDate, course.endDate, course.location)}</td>
-                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top">
+                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top min-w-[140px]">
                                     <input
                                       type="date"
                                       value={course.startDate}
@@ -2256,7 +2257,7 @@ export default function HomePage() {
                                       className="w-full rounded-lg border border-[#d6d7d4] px-2 py-2 text-sm outline-none focus:border-[#016564]"
                                     />
                                   </td>
-                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top">
+                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top min-w-[140px]">
                                     <input
                                       type="date"
                                       value={course.endDate}
@@ -2264,7 +2265,7 @@ export default function HomePage() {
                                       className="w-full rounded-lg border border-[#d6d7d4] px-2 py-2 text-sm outline-none focus:border-[#016564]"
                                     />
                                   </td>
-                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top">
+                                  <td className="border border-[#d6d7d4] px-2 py-2 align-top min-w-[160px]">
                                     <select
                                       value={course.location}
                                       onChange={(e) => updateCourseField(index, 'location', e.target.value)}
@@ -2334,7 +2335,7 @@ export default function HomePage() {
 
                         <div>
                           <label className="mb-1 block text-sm text-gray-600">متطلبات تشغيلية إضافية</label>
-                          <textarea value={hospitalityExtra} onChange={(e) => setHospitalityExtra(e.target.value)} rows={3} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="اكتب الطلب كما تريده فقط، والمنصة ستصوغه بصياغة احترافية." />
+                          <textarea value={hospitalityExtra} onChange={(e) => setHospitalityExtra(e.target.value)} rows={2} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="اكتب الطلب كما تريده فقط، والمنصة ستصوغه بصياغة احترافية." />
                         </div>
                       </>
                     )}
@@ -2349,7 +2350,7 @@ export default function HomePage() {
                           <div className="mb-2 text-sm font-semibold text-[#016564]">طلبات الأمن والسلامة</div>
                           <div className="grid gap-2 sm:grid-cols-2">{securityOptions.map((item) => <label key={item} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={securitySelections.includes(item)} onChange={() => toggleSelection(item, securitySelections, setSecuritySelections)} />{item}</label>)}</div>
                         </div>
-                        {securitySelections.includes('أخرى') ? <div><label className="mb-1 block text-sm text-gray-600">طلب أمني إضافي</label><textarea value={securityOther} onChange={(e) => setSecurityOther(e.target.value)} rows={3} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="اكتب الطلب كما تريده فقط، والمنصة ستصوغه بصياغة احترافية." /></div> : null}
+                        {securitySelections.includes('أخرى') ? <div><label className="mb-1 block text-sm text-gray-600">طلب أمني إضافي</label><textarea value={securityOther} onChange={(e) => setSecurityOther(e.target.value)} rows={2} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="اكتب الطلب كما تريده فقط، والمنصة ستصوغه بصياغة احترافية." /></div> : null}
                         <label className="flex items-center gap-2 text-sm font-semibold text-[#016564]"><input type="checkbox" checked={attachmentsRequired} onChange={(e) => setAttachmentsRequired(e.target.checked)} />توجد مرفقات تعريفية بالمشاركين مرفقة مع البريد</label>
                         {attachmentsRequired ? (
                           <div className="rounded-2xl border border-[#e6e9e9] p-4">
@@ -2391,7 +2392,7 @@ export default function HomePage() {
                           <div className="mb-2 text-sm font-semibold text-[#016564]">طلبات الخدمات المساندة</div>
                           <div className="grid gap-2 sm:grid-cols-2">{supportOptions.map((item) => <label key={item} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={supportSelections.includes(item)} onChange={() => toggleSelection(item, supportSelections, setSupportSelections)} />{item}</label>)}</div>
                         </div>
-                        {supportSelections.includes('أخرى') ? <div><label className="mb-1 block text-sm text-gray-600">طلب إضافي</label><textarea value={supportOther} onChange={(e) => setSupportOther(e.target.value)} rows={3} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="اكتب الطلب كما تريده فقط، والمنصة ستصوغه بصياغة احترافية." /></div> : null}
+                        {supportSelections.includes('أخرى') ? <div><label className="mb-1 block text-sm text-gray-600">طلب إضافي</label><textarea value={supportOther} onChange={(e) => setSupportOther(e.target.value)} rows={2} className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2" placeholder="اكتب الطلب كما تريده فقط، والمنصة ستصوغه بصياغة احترافية." /></div> : null}
                       </>
                     ) : null}
 
@@ -2416,13 +2417,16 @@ export default function HomePage() {
                   </div>
                 </div>
 
+                </div>
+
+                <div className="order-2 min-w-0">
                 <div className="space-y-5">
                   <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
                     <div className="mb-3 flex items-center justify-between">
                       <h2 className="text-lg font-semibold text-[#016564]">المعاينة</h2>
                       {selectedDeptData ? <div className="text-xs text-[#8c6968]">إلى: {selectedDeptData.emailTo}</div> : null}
                     </div>
-                    <div ref={previewRef} className="min-h-[600px] rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4" dangerouslySetInnerHTML={{ __html: previewHtml || '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة، حدّد تاريخ البداية، أضف الدورات، وستُحدَّث المعاينة تلقائيًا.</div>' }} />
+                    <div ref={previewRef} className="min-h-[640px] rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4" dangerouslySetInnerHTML={{ __html: previewHtml || '<div style="color:#8c6968; font-family:Cairo, Arial, sans-serif;">اختر الإدارة، حدّد تاريخ البداية، أضف الدورات، وستُحدَّث المعاينة تلقائيًا.</div>' }} />
                     <div className="sr-only" aria-hidden>
                       <div
                         ref={posterRef}
@@ -2539,6 +2543,8 @@ export default function HomePage() {
                       }) : <div className="rounded-2xl border border-dashed border-[#d6d7d4] p-4 text-sm text-[#8c6968]">لا توجد رسائل محفوظة بعد.</div>}
                     </div>
                   </div>
+                </div>
+              
                 </div>
               </section>
             </>
