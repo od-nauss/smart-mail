@@ -2090,7 +2090,7 @@ export default function HomePage() {
                 })}
               </section>
 
-              <section className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.88fr)] items-start">
+              <section className="grid gap-5 lg:grid-cols-[minmax(0,1.04fr)_minmax(360px,1.04fr)] items-start">
                 <div className="order-1 min-w-0">
                 <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-[#016564]">النموذج الأسبوعي</h2>
