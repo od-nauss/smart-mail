@@ -2208,12 +2208,12 @@ export default function HomePage() {
                             <thead>
                               <tr className="bg-[#016564] text-white">
                                 <th className="w-[130px] border border-[#d6d7d4] px-3 py-2">عنوان الدورة</th>
-                                <th className="w-[92px] border border-[#d6d7d4] px-3 py-2">الفترة</th>
+                                <th className="w-[72px] border border-[#d6d7d4] px-3 py-2">الفترة</th>
                                 <th className="w-[72px] border border-[#d6d7d4] px-3 py-2">المشاركون</th>
                                 <th className="w-[50px] border border-[#d6d7d4] px-3 py-2">المدة</th>
                                 <th className="w-[110px] border border-[#d6d7d4] px-3 py-2">تاريخ البداية</th>
                                 <th className="w-[110px] border border-[#d6d7d4] px-3 py-2">تاريخ النهاية</th>
-                                <th className="w-[130px] border border-[#d6d7d4] px-3 py-2">الموقع</th>
+                                <th className="w-[110px] border border-[#d6d7d4] px-3 py-2">الموقع</th>
                                 <th className="w-[50px] border border-[#d6d7d4] px-3 py-2">إجراء</th>
                               </tr>
                             </thead>
