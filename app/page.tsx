@@ -2091,7 +2091,7 @@ export default function HomePage() {
               </section>
 
               <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.18fr)] items-start">
-                <div className="order-2 space-y-5 lg:order-1">
+                <div className="order-2 space-y-5 lg:order-2">
                   <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
                     <div className="mb-3 flex items-center justify-between">
                       <h2 className="text-lg font-semibold text-[#016564]">المعاينة</h2>
@@ -2216,7 +2216,7 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="order-1 lg:order-2">
+                <div className="order-1 lg:order-1">
                 <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-[#016564]">النموذج الأسبوعي</h2>
 
