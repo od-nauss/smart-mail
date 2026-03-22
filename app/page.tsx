@@ -1145,6 +1145,31 @@ function buildDraftWindowHtml(to: string, cc: string, subject: string, bodyHtml:
   `;
 }
 
+function readFileAsBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== 'string') {
+        reject(new Error('تعذر قراءة الملف.'));
+        return;
+      }
+
+      const base64 = result.split(',')[1];
+      if (!base64) {
+        reject(new Error('تعذر تحويل الملف إلى base64.'));
+        return;
+      }
+
+      resolve(base64);
+    };
+
+    reader.onerror = () => reject(new Error('حدث خطأ أثناء قراءة الملف.'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function HomePage() {
   const [weeklyView, setWeeklyView] = useState<WeeklyView>('home');
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentKey | null>(null);
