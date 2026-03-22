@@ -44,6 +44,12 @@ type UploadedAttachment = {
   size: number;
   data: string;
 };
+type DraftAttachment = {
+  name: string;
+  type: string;
+  size: number;
+  data: string;
+};
 
 type WeeklySnapshot = {
   selectedDepartment: DepartmentKey | null;
