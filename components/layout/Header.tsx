@@ -10,6 +10,23 @@ export function Header({ onArchiveClick }: HeaderProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid min-h-[92px] grid-cols-[auto_1fr_auto] items-center gap-4">
           <div className="flex items-center gap-3">
+            <img
+              src="/naif-logo.png"
+              alt="شعار جامعة نايف"
+              className="h-14 w-auto object-contain sm:h-16 lg:h-20"
+            />
+          </div>
+
+          <div className="text-center">
+            <h1 className="text-xl font-semibold tracking-tight text-[#016564] sm:text-2xl">
+              منصة المراسلات الذكية
+            </h1>
+            <p className="mt-1 text-xs text-[#8c6968] sm:text-sm">
+              واجهة ذكية لإنشاء المراسلات الرسمية
+            </p>
+          </div>
+
+          <div className="flex justify-end">
             {onArchiveClick ? (
               <button
                 type="button"
@@ -25,25 +42,8 @@ export function Header({ onArchiveClick }: HeaderProps) {
                 </svg>
               </button>
             ) : (
-              <div />
+              <div className="h-12 w-12" />
             )}
-          </div>
-
-          <div className="text-center">
-            <h1 className="text-xl font-semibold tracking-tight text-[#016564] sm:text-2xl">
-              منصة المراسلات الذكية
-            </h1>
-            <p className="mt-1 text-xs text-[#8c6968] sm:text-sm">
-              واجهة ذكية لإنشاء المراسلات الرسمية
-            </p>
-          </div>
-
-          <div className="flex justify-end">
-            <img
-              src="/naif-logo.png"
-              alt="شعار جامعة نايف"
-              className="h-14 w-auto object-contain sm:h-16 lg:h-20"
-            />
           </div>
         </div>
       </div>
