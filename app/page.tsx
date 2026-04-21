@@ -9,7 +9,6 @@ import { Footer } from '@/components/layout/Footer';
 type HomeModuleKey = 'weekly' | 'operational' | 'leadership' | 'general';
 type DepartmentKey = 'hospitality' | 'security' | 'medical' | 'support';
 type WeeklyView = 'home' | 'form';
-type WeeklyStepKey = 'department' | 'schedule' | 'courses' | 'requirements' | 'preview';
 type InputMode = 'excel' | 'manual' | 'paste';
 type HospitalityItemKey =
   | 'breakfast'
@@ -1299,7 +1298,6 @@ function readFileAsBase64(file: File) {
 
 export default function HomePage() {
   const [weeklyView, setWeeklyView] = useState<WeeklyView>('home');
-  const [currentStep, setCurrentStep] = useState<WeeklyStepKey>('department');
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentKey | null>(null);
   const [inputMode, setInputMode] = useState<InputMode>('excel');
   const [systemNotice, setSystemNotice] = useState('');
@@ -1357,52 +1355,6 @@ export default function HomePage() {
   const weekLabel = useMemo(() => getWeekLabelFromDate(startDate), [startDate]);
   const formattedStartDate = useMemo(() => getFormattedStartDate(startDate), [startDate]);
 
-  const weeklyChecklist = useMemo(() => ({
-    department: Boolean(selectedDepartment),
-    schedule: Boolean(startDate),
-    courses: courses.length > 0,
-    requirements: selectedDepartment === 'hospitality'
-      ? hospitalityRequests.some((request) => request.items.length > 0) || Boolean(hospitalityExtra.trim())
-      : selectedDepartment === 'security'
-        ? securitySelections.length > 0 || securityAttachments.length > 0 || Boolean(securityOther.trim())
-        : selectedDepartment === 'medical'
-          ? Boolean(medicalExtra.trim())
-          : selectedDepartment === 'support'
-            ? supportSelections.length > 0 || Boolean(supportOther.trim())
-            : false,
-    preview: Boolean(previewHtml),
-  }), [
-    selectedDepartment,
-    startDate,
-    courses.length,
-    hospitalityRequests,
-    hospitalityExtra,
-    securitySelections,
-    securityAttachments.length,
-    securityOther,
-    medicalExtra,
-    supportSelections,
-    supportOther,
-    previewHtml,
-  ]);
-
-  const weeklySteps: Array<{ key: WeeklyStepKey; title: string; hint: string; done: boolean }> = [
-    { key: 'department', title: 'الجهة', hint: 'اختيار الإدارة', done: weeklyChecklist.department },
-    { key: 'schedule', title: 'الأساسيات', hint: 'التاريخ والنسخة', done: weeklyChecklist.schedule },
-    { key: 'courses', title: 'الدورات', hint: 'إدخال أو استيراد', done: weeklyChecklist.courses },
-    { key: 'requirements', title: 'المتطلبات', hint: 'تفاصيل الإدارة', done: weeklyChecklist.requirements },
-    { key: 'preview', title: 'المعاينة', hint: 'الحفظ والتصدير', done: weeklyChecklist.preview },
-  ];
-
-  function jumpToStep(step: WeeklyStepKey) {
-    setCurrentStep(step);
-    if (typeof document === 'undefined') return;
-    const element = document.getElementById(`weekly-step-${step}`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }
-
   useEffect(() => {
     if (!courses.length) return;
     const earliest = getEarliestStartDate(courses);
@@ -1434,7 +1386,6 @@ export default function HomePage() {
   }
 
   function resetWeeklyForm() {
-    setCurrentStep('department');
     setSelectedDepartment(null);
     setCc('');
     setStartDate('');
@@ -2083,7 +2034,7 @@ export default function HomePage() {
                       <div className="rounded-2xl border border-[#e7dcc7] bg-[#fbfaf7] p-2.5">
                         <button
                           type="button"
-                          onClick={() => { setWeeklyView('form'); setCurrentStep('department'); }}
+                          onClick={() => setWeeklyView('form')}
                           className="group flex w-full items-center justify-between rounded-2xl border border-[#d0b284] bg-white px-4 py-4 text-right transition hover:border-[#016564] hover:shadow-sm"
                         >
                           <div className="flex items-center gap-3">
@@ -2129,7 +2080,7 @@ export default function HomePage() {
                     <button
                       key={dept.key}
                       type="button"
-                      onClick={() => { setSelectedDepartment(dept.key); setCurrentStep('schedule'); }}
+                      onClick={() => setSelectedDepartment(dept.key)}
                       className={`rounded-2xl border p-4 text-right transition ${active ? 'border-[#016564] bg-white shadow-sm' : 'border-[#e1e5e5] bg-white/80 hover:border-[#d0b284]'}`}
                     >
                       <div className="mb-2 text-2xl">{dept.icon}</div>
@@ -2143,26 +2094,29 @@ export default function HomePage() {
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-[#016564]">تدفق العمل الأسبوعي</div>
-                    <div className="mt-1 text-xs text-[#8c6968]">المسار واضح: اختر الجهة ثم أكمل الأساسيات والدورات والمتطلبات قبل الحفظ أو التصدير.</div>
+                    <div className="mt-1 text-xs text-[#8c6968]">ابدأ باختيار الجهة ثم التاريخ ثم إدخال الدورات ثم راجع المعاينة قبل الحفظ أو التصدير.</div>
                   </div>
-                  <div className="rounded-2xl bg-[#f8f9f9] px-3 py-2 text-xs text-[#016564]">{weeklySteps.filter((step) => step.done).length} / {weeklySteps.length} مكتمل</div>
+                  <div className="rounded-2xl bg-[#f8f9f9] px-3 py-2 text-xs text-[#016564]">
+                    {[selectedDepartment, startDate, courses.length > 0, Boolean(previewHtml)].filter(Boolean).length} / 4 مكتمل
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
-                  {weeklySteps.map((step, index) => {
-                    const active = currentStep === step.key;
-                    return (
-                      <button
-                        key={step.key}
-                        type="button"
-                        onClick={() => jumpToStep(step.key)}
-                        className={`rounded-2xl border px-3 py-3 text-right transition ${active ? 'border-[#016564] bg-[#016564] text-white shadow-sm' : step.done ? 'border-[#d0b284] bg-[#fbfaf7] text-[#016564]' : 'border-[#e1e5e5] bg-white text-[#5f6b6b] hover:border-[#d0b284]'}`}
-                      >
-                        <div className="mb-1 text-xs opacity-80">الخطوة {index + 1}</div>
-                        <div className="text-sm font-semibold">{step.title}</div>
-                        <div className="mt-1 text-[11px] opacity-80">{step.hint}</div>
-                      </button>
-                    );
-                  })}
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                  <div className={`rounded-2xl border px-3 py-3 text-right ${selectedDepartment ? 'border-[#d0b284] bg-[#fbfaf7]' : 'border-[#e1e5e5] bg-white'}`}>
+                    <div className="text-xs text-[#8c6968]">الخطوة 1</div>
+                    <div className="mt-1 text-sm font-semibold text-[#016564]">اختيار الجهة</div>
+                  </div>
+                  <div className={`rounded-2xl border px-3 py-3 text-right ${startDate ? 'border-[#d0b284] bg-[#fbfaf7]' : 'border-[#e1e5e5] bg-white'}`}>
+                    <div className="text-xs text-[#8c6968]">الخطوة 2</div>
+                    <div className="mt-1 text-sm font-semibold text-[#016564]">ضبط الأساسيات</div>
+                  </div>
+                  <div className={`rounded-2xl border px-3 py-3 text-right ${courses.length > 0 ? 'border-[#d0b284] bg-[#fbfaf7]' : 'border-[#e1e5e5] bg-white'}`}>
+                    <div className="text-xs text-[#8c6968]">الخطوة 3</div>
+                    <div className="mt-1 text-sm font-semibold text-[#016564]">إضافة الدورات</div>
+                  </div>
+                  <div className={`rounded-2xl border px-3 py-3 text-right ${previewHtml ? 'border-[#016564] bg-[#f4fbfa]' : 'border-[#e1e5e5] bg-white'}`}>
+                    <div className="text-xs text-[#8c6968]">الخطوة 4</div>
+                    <div className="mt-1 text-sm font-semibold text-[#016564]">المعاينة والتصدير</div>
+                  </div>
                 </div>
               </section>
 
@@ -2172,13 +2126,11 @@ export default function HomePage() {
                   <h2 className="mb-4 text-lg font-semibold text-[#016564]">النموذج الأسبوعي</h2>
 
                   <div className="space-y-4">
-                    <div id="weekly-step-schedule" className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4">
-                      <div className="mb-3">
-                        <div className="text-sm font-semibold text-[#016564]">البيانات الأساسية</div>
-                        <div className="mt-1 text-xs text-[#8c6968]">اضبط الموضوع والنسخة وتاريخ البداية أولًا.</div>
-                      </div>
+                    <div className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4">
+                      <div className="mb-3 text-sm font-semibold text-[#016564]">البيانات الأساسية</div>
+                      <div className="mb-4 text-xs text-[#8c6968]">الموضوع والنسخة وتاريخ البداية هي نقطة الانطلاق لبقية النموذج.</div>
 
-                      <div>
+                    <div>
                       <label className="mb-1 block text-sm text-gray-600">الموضوع</label>
                       <input value={autoSubject} readOnly className="w-full rounded-xl border border-[#d6d7d4] bg-[#f8f9f9] px-3 py-2 text-[#016564]" />
                     </div>
@@ -2201,13 +2153,11 @@ export default function HomePage() {
 
                     </div>
 
-                    <div id="weekly-step-courses" className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4">
-                      <div className="mb-3">
-                        <div className="text-sm font-semibold text-[#016564]">إدخال الدورات</div>
-                        <div className="mt-1 text-xs text-[#8c6968]">أضف الدورات من Excel أو يدويًا أو عبر اللصق الذكي ثم راجع الجدول.</div>
-                      </div>
+                    <div className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4">
+                      <div className="mb-3 text-sm font-semibold text-[#016564]">إدخال الدورات</div>
+                      <div className="mb-4 text-xs text-[#8c6968]">اختر طريقة الإدخال المناسبة ثم راجع الجدول قبل الانتقال إلى متطلبات الإدارة.</div>
 
-                      <div>
+                    <div>
                       <label className="mb-2 block text-sm text-gray-600">طريقة إضافة الدورات</label>
                       <div className="grid grid-cols-3 gap-2">
                         {[
@@ -2215,7 +2165,7 @@ export default function HomePage() {
                           { key: 'manual', label: 'يدوي' },
                           { key: 'paste', label: 'لصق ذكي' },
                         ].map((mode) => (
-                          <button key={mode.key} type="button" onClick={() => { setInputMode(mode.key as InputMode); setCurrentStep('courses'); }} className={`rounded-xl border px-3 py-2 text-sm ${inputMode === mode.key ? 'border-[#016564] bg-[#016564] text-white' : 'border-[#d6d7d4] bg-white text-[#016564]'}`}>
+                          <button key={mode.key} type="button" onClick={() => setInputMode(mode.key as InputMode)} className={`rounded-xl border px-3 py-2 text-sm ${inputMode === mode.key ? 'border-[#016564] bg-[#016564] text-white' : 'border-[#d6d7d4] bg-white text-[#016564]'}`}>
                             {mode.label}
                           </button>
                         ))}
@@ -2284,7 +2234,7 @@ export default function HomePage() {
                         </div>
 
                         <div className="mt-3 flex gap-2">
-                          <button type="button" onClick={() => { saveManualCourse(); setCurrentStep('requirements'); }} className="rounded-xl bg-[#016564] px-4 py-2 text-sm font-semibold text-white">{editingIndex === null ? 'إضافة دورة' : 'حفظ التعديل'}</button>
+                          <button type="button" onClick={saveManualCourse} className="rounded-xl bg-[#016564] px-4 py-2 text-sm font-semibold text-white">{editingIndex === null ? 'إضافة دورة' : 'حفظ التعديل'}</button>
                           {editingIndex !== null ? <button type="button" onClick={resetCourseForm} className="rounded-xl border border-[#d6d7d4] bg-white px-4 py-2 text-sm font-semibold text-[#016564]">إلغاء</button> : null}
                         </div>
                       </div>
@@ -2384,11 +2334,9 @@ export default function HomePage() {
 
                     </div>
 
-                    <div id="weekly-step-requirements" className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4">
-                      <div className="mb-3">
-                        <div className="text-sm font-semibold text-[#016564]">متطلبات الإدارة المختارة</div>
-                        <div className="mt-1 text-xs text-[#8c6968]">لن تظهر إلا الحقول المرتبطة بالجهة التي اخترتها لتقليل التشعب.</div>
-                      </div>
+                    <div className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4">
+                      <div className="mb-3 text-sm font-semibold text-[#016564]">متطلبات الإدارة المختارة</div>
+                      <div className="mb-4 text-xs text-[#8c6968]">تظهر هنا فقط الحقول المرتبطة بالإدارة التي اخترتها لتقليل التشعب.</div>
 
                     {selectedDepartment === 'hospitality' && (
                       <>
@@ -2496,11 +2444,9 @@ export default function HomePage() {
 
                     </div>
 
-                    <div id="weekly-step-preview" className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4">
-                      <div className="mb-3">
-                        <div className="text-sm font-semibold text-[#016564]">الحفظ والإخراج</div>
-                        <div className="mt-1 text-xs text-[#8c6968]">يتم تفعيل الحفظ والتصدير عندما تصبح المعاينة جاهزة.</div>
-                      </div>
+                    <div className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4">
+                      <div className="mb-3 text-sm font-semibold text-[#016564]">الحفظ والإخراج</div>
+                      <div className="mb-4 text-xs text-[#8c6968]">لن تعمل الأزرار التالية إلا بعد جاهزية المعاينة.</div>
 
                     <div className="grid gap-2 sm:grid-cols-5">
                       <button
