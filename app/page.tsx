@@ -929,13 +929,92 @@ function parseSmartLmsLine(line: string) {
   } satisfies CourseRecord;
 }
 
+function isDateCell(value: string) {
+  return /(\d{1,2}[\/-]\d{1,2}[\/-]\d{4}|\d{4}[\/-]\d{1,2}[\/-]\d{1,2})/.test(String(value || '').trim());
+}
+
+function sortStartAndEndDates(first: string, second: string) {
+  const parsedFirst = parseExcelDateValue(first);
+  const parsedSecond = parseExcelDateValue(second);
+  if (!parsedFirst || !parsedSecond) {
+    return { startDate: parsedFirst, endDate: parsedSecond };
+  }
+
+  return parsedFirst <= parsedSecond
+    ? { startDate: parsedFirst, endDate: parsedSecond }
+    : { startDate: parsedSecond, endDate: parsedFirst };
+}
+
+function parseFlattenedLmsCells(text: string) {
+  const cells = String(text || '')
+    .split(/	|?
+/)
+    .map((cell) => cell.replace(/ /g, ' ').trim())
+    .filter(Boolean);
+
+  if (cells.length < 6) return [];
+
+  const records: CourseRecord[] = [];
+  let index = 0;
+
+  while (index + 5 < cells.length) {
+    const title = cells[index] || '';
+    const executionPlace = cells[index + 1] || '';
+    const firstDate = cells[index + 2] || '';
+    const secondDate = cells[index + 3] || '';
+    const coordinator = cells[index + 5] || '';
+
+    if (!title || !executionPlace || !isDateCell(firstDate) || !isDateCell(secondDate)) {
+      index += 1;
+      continue;
+    }
+
+    let hall = '';
+    let step = 6;
+
+    const nextCell = cells[index + 6] || '';
+    const nextNextCell = cells[index + 7] || '';
+    const nextThirdCell = cells[index + 8] || '';
+    const nextFourthCell = cells[index + 9] || '';
+
+    const nextLooksLikeNewRecord = nextCell && nextNextCell && isDateCell(nextThirdCell);
+    const nextAfterHallLooksLikeNewRecord = nextNextCell && nextThirdCell && isDateCell(nextFourthCell);
+
+    if (nextCell && !nextLooksLikeNewRecord && !isDateCell(nextCell)) {
+      hall = nextCell;
+      step = nextAfterHallLooksLikeNewRecord ? 7 : 6;
+    }
+
+    const dates = sortStartAndEndDates(firstDate, secondDate);
+    const location = normalizeLocation(hall || executionPlace);
+
+    if (title && dates.startDate && dates.endDate && location) {
+      records.push({
+        title,
+        period: '',
+        participants: '',
+        startDate: dates.startDate,
+        endDate: dates.endDate,
+        location,
+      });
+    }
+
+    index += step;
+
+    if (!hall && coordinator && index < cells.length && cells[index] === coordinator) {
+      index += 1;
+    }
+  }
+
+  return records;
+}
+
 function buildRecordFromHeaderlessLmsCells(cells: string[]) {
   const cleaned = cells.map((cell) => String(cell || '').replace(/ /g, ' ').trim());
   if (cleaned.length < 6) return null;
 
   const [title = '', executionPlace = '', startRaw = '', endRaw = '', _status = '', _coordinator = '', hall = ''] = cleaned;
-  const startDate = parseExcelDateValue(startRaw);
-  const endDate = parseExcelDateValue(endRaw);
+  const { startDate, endDate } = sortStartAndEndDates(startRaw, endRaw);
 
   if (!title || !startDate || !endDate) return null;
 
