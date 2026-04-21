@@ -1000,9 +1000,6 @@ function parseFlattenedLmsCells(text: string) {
 }
 
 function parseRowsFromPastedText(text: string) {
-  const structured = parseStructuredPastedRows(text);
-  if (structured.length) return structured;
-
   const flattened = parseFlattenedLmsCells(text);
   if (flattened.length) return flattened;
 
