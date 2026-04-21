@@ -971,7 +971,7 @@ function parseFlattenedLmsCells(text: string) {
 
     const hallCandidate = cells[index + 6] || '';
     const nextTitleCandidate = cells[index + 7] || '';
-    const hallIsPresent = Boolean(hallCandidate) && !isDateCell(hallCandidate) && !looksLikeStatus(hallCandidate);
+    const hallIsPresent = Boolean(hallCandidate) && !isDateCell(hallCandidate) && !/(?:مؤكد|قيد\s*التقدم|تم\s*الالغاء|تم\s*الإلغاء|مكتمل|ملغي)/.test(normalizeArabicText(hallCandidate));
     const nextLooksLikeNewRow = !nextTitleCandidate || !isDateCell(nextTitleCandidate);
 
     const hall = hallIsPresent && nextLooksLikeNewRow ? hallCandidate : '';
