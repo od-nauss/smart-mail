@@ -2090,46 +2090,12 @@ export default function HomePage() {
                 })}
               </section>
 
-              <section className="mb-5 rounded-3xl border border-[#e1e5e5] bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-[#016564]">تدفق العمل الأسبوعي</div>
-                    <div className="mt-1 text-xs text-[#8c6968]">ابدأ باختيار الجهة ثم التاريخ ثم إدخال الدورات ثم راجع المعاينة قبل الحفظ أو التصدير.</div>
-                  </div>
-                  <div className="rounded-2xl bg-[#f8f9f9] px-3 py-2 text-xs text-[#016564]">
-                    {[selectedDepartment, startDate, courses.length > 0, Boolean(previewHtml)].filter(Boolean).length} / 4 مكتمل
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                  <div className={`rounded-2xl border px-3 py-3 text-right ${selectedDepartment ? 'border-[#d0b284] bg-[#fbfaf7]' : 'border-[#e1e5e5] bg-white'}`}>
-                    <div className="text-xs text-[#8c6968]">الخطوة 1</div>
-                    <div className="mt-1 text-sm font-semibold text-[#016564]">اختيار الجهة</div>
-                  </div>
-                  <div className={`rounded-2xl border px-3 py-3 text-right ${startDate ? 'border-[#d0b284] bg-[#fbfaf7]' : 'border-[#e1e5e5] bg-white'}`}>
-                    <div className="text-xs text-[#8c6968]">الخطوة 2</div>
-                    <div className="mt-1 text-sm font-semibold text-[#016564]">ضبط الأساسيات</div>
-                  </div>
-                  <div className={`rounded-2xl border px-3 py-3 text-right ${courses.length > 0 ? 'border-[#d0b284] bg-[#fbfaf7]' : 'border-[#e1e5e5] bg-white'}`}>
-                    <div className="text-xs text-[#8c6968]">الخطوة 3</div>
-                    <div className="mt-1 text-sm font-semibold text-[#016564]">إضافة الدورات</div>
-                  </div>
-                  <div className={`rounded-2xl border px-3 py-3 text-right ${previewHtml ? 'border-[#016564] bg-[#f4fbfa]' : 'border-[#e1e5e5] bg-white'}`}>
-                    <div className="text-xs text-[#8c6968]">الخطوة 4</div>
-                    <div className="mt-1 text-sm font-semibold text-[#016564]">المعاينة والتصدير</div>
-                  </div>
-                </div>
-              </section>
-
               <section className="grid gap-5 lg:grid-cols-[minmax(0,1.04fr)_minmax(360px,1.04fr)] items-start">
                 <div className="order-1 min-w-0">
                 <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-[#016564]">النموذج الأسبوعي</h2>
 
                   <div className="space-y-4">
-                    <div className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4">
-                      <div className="mb-3 text-sm font-semibold text-[#016564]">البيانات الأساسية</div>
-                      <div className="mb-4 text-xs text-[#8c6968]">الموضوع والنسخة وتاريخ البداية هي نقطة الانطلاق لبقية النموذج.</div>
-
                     <div>
                       <label className="mb-1 block text-sm text-gray-600">الموضوع</label>
                       <input value={autoSubject} readOnly className="w-full rounded-xl border border-[#d6d7d4] bg-[#f8f9f9] px-3 py-2 text-[#016564]" />
@@ -2150,12 +2116,6 @@ export default function HomePage() {
                         <input readOnly value={[formattedStartDate, weekLabel].filter(Boolean).join(' - ')} className="w-full rounded-xl border border-[#d6d7d4] bg-[#f8f9f9] px-3 py-2 text-[#016564]" />
                       </div>
                     </div>
-
-                    </div>
-
-                    <div className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4">
-                      <div className="mb-3 text-sm font-semibold text-[#016564]">إدخال الدورات</div>
-                      <div className="mb-4 text-xs text-[#8c6968]">اختر طريقة الإدخال المناسبة ثم راجع الجدول قبل الانتقال إلى متطلبات الإدارة.</div>
 
                     <div>
                       <label className="mb-2 block text-sm text-gray-600">طريقة إضافة الدورات</label>
@@ -2332,12 +2292,6 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    </div>
-
-                    <div className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4">
-                      <div className="mb-3 text-sm font-semibold text-[#016564]">متطلبات الإدارة المختارة</div>
-                      <div className="mb-4 text-xs text-[#8c6968]">تظهر هنا فقط الحقول المرتبطة بالإدارة التي اخترتها لتقليل التشعب.</div>
-
                     {selectedDepartment === 'hospitality' && (
                       <>
                         <div className="rounded-2xl border border-[#e6e9e9] p-4">
@@ -2442,12 +2396,6 @@ export default function HomePage() {
                       </>
                     ) : null}
 
-                    </div>
-
-                    <div className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] p-4">
-                      <div className="mb-3 text-sm font-semibold text-[#016564]">الحفظ والإخراج</div>
-                      <div className="mb-4 text-xs text-[#8c6968]">لن تعمل الأزرار التالية إلا بعد جاهزية المعاينة.</div>
-
                     <div className="grid gap-2 sm:grid-cols-5">
                       <button
                         onClick={() => {
@@ -2461,12 +2409,10 @@ export default function HomePage() {
                       >
                         تجديد النموذج
                       </button>
-                      <button onClick={saveToArchive} type="button" disabled={!previewHtml} className="rounded-xl bg-[#016564] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">حفظ في الأرشيف</button>
-                      <button onClick={exportAsWord} type="button" disabled={!previewHtml} className="rounded-xl border border-[#d0b284] bg-white px-4 py-3 text-sm font-semibold text-[#016564] disabled:cursor-not-allowed disabled:opacity-50">تصدير Word</button>
-                      <button onClick={openDraft} type="button" disabled={!previewHtml} className="rounded-xl border border-[#d6d7d4] bg-[#f8f9f9] px-4 py-3 text-sm font-semibold text-[#016564] disabled:cursor-not-allowed disabled:opacity-50">تنزيل مسودة Outlook</button>
-                      <button onClick={exportAsJpg} type="button" disabled={!previewHtml} className="rounded-xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564] disabled:cursor-not-allowed disabled:opacity-50">تصدير JPG</button>
-                    </div>
-                  </div>
+                      <button onClick={saveToArchive} type="button" className="rounded-xl bg-[#016564] px-4 py-3 text-sm font-semibold text-white">حفظ في الأرشيف</button>
+                      <button onClick={exportAsWord} type="button" className="rounded-xl border border-[#d0b284] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">تصدير Word</button>
+                      <button onClick={openDraft} type="button" className="rounded-xl border border-[#d6d7d4] bg-[#f8f9f9] px-4 py-3 text-sm font-semibold text-[#016564]">تنزيل مسودة Outlook</button>
+                      <button onClick={exportAsJpg} type="button" className="rounded-xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">تصدير JPG</button>
                     </div>
                   </div>
                 </div>
@@ -2475,27 +2421,6 @@ export default function HomePage() {
 
                 <div className="order-2 min-w-0">
                 <div className="space-y-5">
-                  <div className="rounded-3xl border border-[#e1e5e5] bg-white p-4 shadow-sm">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] px-3 py-3">
-                        <div className="text-xs text-[#8c6968]">الجهة</div>
-                        <div className="mt-1 text-sm font-semibold text-[#016564]">{selectedDeptData?.title || 'لم يتم الاختيار بعد'}</div>
-                      </div>
-                      <div className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] px-3 py-3">
-                        <div className="text-xs text-[#8c6968]">عدد الدورات</div>
-                        <div className="mt-1 text-sm font-semibold text-[#016564]">{courses.length}</div>
-                      </div>
-                      <div className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] px-3 py-3">
-                        <div className="text-xs text-[#8c6968]">تاريخ البداية</div>
-                        <div className="mt-1 text-sm font-semibold text-[#016564]">{formattedStartDate || 'غير محدد'}</div>
-                      </div>
-                      <div className="rounded-2xl border border-[#eef1f1] bg-[#fcfdfd] px-3 py-3">
-                        <div className="text-xs text-[#8c6968]">المعاينة</div>
-                        <div className={`mt-1 text-sm font-semibold ${previewHtml ? 'text-[#016564]' : 'text-[#7c1e3e]'}`}>{previewHtml ? 'جاهزة' : 'غير مكتملة'}</div>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="rounded-3xl border border-[#e1e5e5] bg-white p-5 shadow-sm">
                     <div className="mb-3 flex items-center justify-between">
                       <h2 className="text-lg font-semibold text-[#016564]">المعاينة</h2>
