@@ -828,6 +828,28 @@ function buildRecordFromMyCoursesRow(row: Record<string, unknown>) {
   } satisfies CourseRecord;
 }
 
+function buildRecordFromHeaderlessLmsCells(cells: string[]) {
+  const cleaned = cells.map((cell) => String(cell || '').replace(/ /g, ' ').trim()).filter(Boolean);
+  if (cleaned.length < 6) return null;
+
+  const title = cleaned[0] || '';
+  const executionPlace = cleaned[1] || '';
+  const startDate = parseExcelDateValue(cleaned[2] || '');
+  const endDate = parseExcelDateValue(cleaned[3] || '');
+  const hall = cleaned[6] || cleaned[5] || '';
+
+  if (!title || !startDate || !endDate) return null;
+
+  return {
+    title,
+    period: '',
+    participants: '',
+    startDate,
+    endDate,
+    location: normalizeLocation(hall || executionPlace),
+  } satisfies CourseRecord;
+}
+
 function parseStructuredPastedRows(text: string) {
   const lines = text
     .split(/\r?\n/)
@@ -872,10 +894,6 @@ function parseStructuredPastedRows(text: string) {
       const executionPlaceKey = findHeader(row, ['مكان التنفيذ']);
 
       const status = String(statusKey ? row[statusKey] ?? '' : '').trim();
-
-      if (status && !normalizeHeader(status).includes(normalizeHeader('مؤكد'))) {
-        continue;
-      }
 
       const title = String(titleKey ? row[titleKey] ?? '' : '').trim();
       const startDate = parseExcelDateValue(startDateKey ? row[startDateKey] : '');
@@ -1565,7 +1583,7 @@ export default function HomePage() {
   function handlePasteConvert() {
     const rows = parseRowsFromPastedText(pastedText);
     if (!rows.length) {
-      setSystemNotice('تعذر فهم النص الملصوق. الصق جدول دوراتي التدريبية من LMS أو الصيغة الحرة السابقة.');
+      setSystemNotice('تعذر فهم النص الملصوق. الصق الصفوف مباشرة من LMS بالترتيب: اسم النشاط التدريبي، مكان التنفيذ، تاريخ البدء، تاريخ الانتهاء، الحالة، اسم منسق التدريب، القاعة.');
       return;
     }
     setCourses(rows);
