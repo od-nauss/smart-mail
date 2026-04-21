@@ -828,15 +828,114 @@ function buildRecordFromMyCoursesRow(row: Record<string, unknown>) {
   } satisfies CourseRecord;
 }
 
+function matchKnownLocationAtEnd(value: string) {
+  const raw = String(value || '').replace(/ /g, ' ').trim();
+  if (!raw) return { matchedLocation: '', remainingText: '' };
+
+  const candidates = Array.from(new Set([
+    ...locations,
+    'جامعة نايف العربية للعلوم الأمنية',
+    'لندن',
+    'أسان',
+    'باريس',
+    'فرنسا',
+  ])).sort((a, b) => b.length - a.length);
+
+  const normalizedRaw = normalizeHeader(raw);
+
+  for (const candidate of candidates) {
+    const normalizedCandidate = normalizeHeader(candidate);
+    if (normalizedRaw.endsWith(normalizedCandidate)) {
+      const index = normalizedRaw.lastIndexOf(normalizedCandidate);
+      return {
+        matchedLocation: candidate,
+        remainingText: raw.slice(0, index).trim(),
+      };
+    }
+  }
+
+  for (const hint of lmsLocationHints) {
+    const match = raw.match(new RegExp(`(.*)(${hint.pattern.source})$`, 'i'));
+    if (match) {
+      return {
+        matchedLocation: hint.value,
+        remainingText: String(match[1] || '').trim(),
+      };
+    }
+  }
+
+  return { matchedLocation: '', remainingText: raw };
+}
+
+function parseSmartLmsLine(line: string) {
+  const raw = String(line || '').replace(/ /g, ' ').trim();
+  if (!raw) return null;
+
+  const dateMatches = [...raw.matchAll(/(\d{1,2}[\/-]\d{1,2}[\/-]\d{4}|\d{4}[\/-]\d{1,2}[\/-]\d{1,2})/g)];
+  if (dateMatches.length < 2) return null;
+
+  const startDateRaw = dateMatches[0][0];
+  const endDateRaw = dateMatches[1][0];
+  const startIndex = dateMatches[0].index ?? -1;
+  const endIndex = dateMatches[1].index ?? -1;
+  if (startIndex < 0 || endIndex < 0) return null;
+
+  const statusMatch = raw.match(/(مؤكد|قيد\s*التقدم|مكتمل|تم\s*الالغاء|تم\s*الإلغاء|ملغي|مغلق)/i);
+  if (!statusMatch || statusMatch.index === undefined) return null;
+
+  const beforeStart = raw.slice(0, startIndex).trim();
+  const betweenDatesAndStatus = raw.slice(endIndex + endDateRaw.length, statusMatch.index).trim();
+  const afterStatus = raw.slice(statusMatch.index + statusMatch[0].length).trim();
+
+  let title = '';
+  let executionPlace = '';
+
+  if (beforeStart.includes('	')) {
+    const headCells = beforeStart.split('	').map((part) => part.trim()).filter(Boolean);
+    title = headCells[0] || '';
+    executionPlace = headCells[1] || betweenDatesAndStatus || '';
+  } else {
+    const matchedPlace = matchKnownLocationAtEnd(beforeStart);
+    executionPlace = matchedPlace.matchedLocation || betweenDatesAndStatus || '';
+    title = matchedPlace.remainingText || beforeStart;
+  }
+
+  let coordinator = '';
+  let hall = '';
+
+  if (afterStatus.includes('	')) {
+    const tailCells = afterStatus.split('	').map((part) => part.trim()).filter(Boolean);
+    coordinator = tailCells[0] || '';
+    hall = tailCells[1] || '';
+  } else {
+    const matchedHall = matchKnownLocationAtEnd(afterStatus);
+    hall = matchedHall.matchedLocation;
+    coordinator = matchedHall.remainingText || afterStatus;
+  }
+
+  const startDate = parseExcelDateValue(startDateRaw);
+  const endDate = parseExcelDateValue(endDateRaw);
+  const location = normalizeLocation(hall || executionPlace);
+
+  if (!title || !startDate || !endDate || !location) return null;
+
+  return {
+    title,
+    period: '',
+    participants: '',
+    startDate,
+    endDate,
+    location,
+  } satisfies CourseRecord;
+}
+
 function buildRecordFromHeaderlessLmsCells(cells: string[]) {
-  const cleaned = cells.map((cell) => String(cell || '').replace(/ /g, ' ').trim()).filter(Boolean);
+  const cleaned = cells.map((cell) => String(cell || '').replace(/ /g, ' ').trim());
   if (cleaned.length < 6) return null;
 
-  const title = cleaned[0] || '';
-  const executionPlace = cleaned[1] || '';
-  const startDate = parseExcelDateValue(cleaned[2] || '');
-  const endDate = parseExcelDateValue(cleaned[3] || '');
-  const hall = cleaned[6] || cleaned[5] || '';
+  const [title = '', executionPlace = '', startRaw = '', endRaw = '', _status = '', _coordinator = '', hall = ''] = cleaned;
+  const startDate = parseExcelDateValue(startRaw);
+  const endDate = parseExcelDateValue(endRaw);
 
   if (!title || !startDate || !endDate) return null;
 
