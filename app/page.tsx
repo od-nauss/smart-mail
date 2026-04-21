@@ -1006,8 +1006,7 @@ function parseRowsFromPastedText(text: string) {
   const flattened = parseFlattenedLmsCells(text);
   if (flattened.length) return flattened;
 
-  const lines = text.split('
-').map((line) => line.trim()).filter(Boolean);
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const records: CourseRecord[] = [];
 
   for (const line of lines) {
