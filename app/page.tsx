@@ -569,8 +569,51 @@ function createEmptyHospitalityRequest(): HospitalityRequest {
 function normalizePeriod(value: string) {
   const raw = String(value || '').trim();
   if (!raw) return '';
-  if (/مسائي|مسائية/i.test(raw)) return 'مسائية';
-  if (/صباحي|صباحية/i.test(raw)) return 'صباحية';
+
+  const normalized = normalizeHeader(
+    raw
+      .replace(/[\-_–—]+/g, ' ')
+      .replace(/[.،,:;]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  );
+
+  const morningAliases = [
+    '1',
+    'ص',
+    'صباح',
+    'الصباح',
+    'صباحي',
+    'الصباحي',
+    'صباحية',
+    'الصباحية',
+    'am',
+    'a m',
+    'morning',
+  ];
+
+  const eveningAliases = [
+    '2',
+    'م',
+    'مساء',
+    'المساء',
+    'مسائي',
+    'المسائي',
+    'مسائية',
+    'المسائية',
+    'pm',
+    'p m',
+    'evening',
+  ];
+
+  if (morningAliases.includes(normalized) || /(^|\s)(صباح|صباحي|صباحية|am|morning)(\s|$)/i.test(normalized)) {
+    return 'صباحية';
+  }
+
+  if (eveningAliases.includes(normalized) || /(^|\s)(مساء|مسائي|مسائية|pm|evening)(\s|$)/i.test(normalized)) {
+    return 'مسائية';
+  }
+
   return raw;
 }
 
