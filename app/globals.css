@@ -50,7 +50,7 @@ table,
 th,
 td,
 label {
-  font-family: var(--font-cairo), 'Cairo', sans-serif !important;
+  font-family: 'Cairo', 'Tahoma', 'Arial', sans-serif !important;
 }
 
 body {
