@@ -947,9 +947,8 @@ function sortStartAndEndDates(first: string, second: string) {
 
 function parseFlattenedLmsCells(text: string) {
   const cells = String(text || '')
-    .split(/	|?
-/)
-    .map((cell) => cell.replace(/ /g, ' ').trim())
+    .split(/\t|\r?\n/)
+    .map((cell) => cell.replace(/\u00A0/g, ' ').trim())
     .filter(Boolean);
 
   if (cells.length < 6) return [];
@@ -960,170 +959,39 @@ function parseFlattenedLmsCells(text: string) {
   while (index + 5 < cells.length) {
     const title = cells[index] || '';
     const executionPlace = cells[index + 1] || '';
-    const firstDate = cells[index + 2] || '';
-    const secondDate = cells[index + 3] || '';
+    const dateA = cells[index + 2] || '';
+    const dateB = cells[index + 3] || '';
+    const status = cells[index + 4] || '';
     const coordinator = cells[index + 5] || '';
 
-    if (!title || !executionPlace || !isDateCell(firstDate) || !isDateCell(secondDate)) {
+    if (!title || !executionPlace || !isDateCell(dateA) || !isDateCell(dateB) || !status || !coordinator) {
       index += 1;
       continue;
     }
 
-    let hall = '';
-    let step = 6;
+    const hallCandidate = cells[index + 6] || '';
+    const nextTitleCandidate = cells[index + 7] || '';
+    const hallIsPresent = Boolean(hallCandidate) && !isDateCell(hallCandidate) && !looksLikeStatus(hallCandidate);
+    const nextLooksLikeNewRow = !nextTitleCandidate || !isDateCell(nextTitleCandidate);
 
-    const nextCell = cells[index + 6] || '';
-    const nextNextCell = cells[index + 7] || '';
-    const nextThirdCell = cells[index + 8] || '';
-    const nextFourthCell = cells[index + 9] || '';
+    const hall = hallIsPresent && nextLooksLikeNewRow ? hallCandidate : '';
+    const consumed = hall ? 7 : 6;
+    const { startDate, endDate } = sortStartAndEndDates(dateA, dateB);
 
-    const nextLooksLikeNewRecord = nextCell && nextNextCell && isDateCell(nextThirdCell);
-    const nextAfterHallLooksLikeNewRecord = nextNextCell && nextThirdCell && isDateCell(nextFourthCell);
+    records.push({
+      courseName: title,
+      executionPlace,
+      startDate,
+      endDate,
+      periodType: '',
+      hall,
+      participantsCount: '',
+    });
 
-    if (nextCell && !nextLooksLikeNewRecord && !isDateCell(nextCell)) {
-      hall = nextCell;
-      step = nextAfterHallLooksLikeNewRecord ? 7 : 6;
-    }
-
-    const dates = sortStartAndEndDates(firstDate, secondDate);
-    const location = normalizeLocation(hall || executionPlace);
-
-    if (title && dates.startDate && dates.endDate && location) {
-      records.push({
-        title,
-        period: '',
-        participants: '',
-        startDate: dates.startDate,
-        endDate: dates.endDate,
-        location,
-      });
-    }
-
-    index += step;
-
-    if (!hall && coordinator && index < cells.length && cells[index] === coordinator) {
-      index += 1;
-    }
+    index += consumed;
   }
 
   return records;
-}
-
-function buildRecordFromHeaderlessLmsCells(cells: string[]) {
-  const cleaned = cells.map((cell) => String(cell || '').replace(/ /g, ' ').trim());
-  if (cleaned.length < 6) return null;
-
-  const [title = '', executionPlace = '', startRaw = '', endRaw = '', _status = '', _coordinator = '', hall = ''] = cleaned;
-  const { startDate, endDate } = sortStartAndEndDates(startRaw, endRaw);
-
-  if (!title || !startDate || !endDate) return null;
-
-  return {
-    title,
-    period: '',
-    participants: '',
-    startDate,
-    endDate,
-    location: normalizeLocation(hall || executionPlace),
-  } satisfies CourseRecord;
-}
-
-function parseStructuredPastedRows(text: string) {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.replace(/\u00A0/g, ' ').trim())
-    .filter(Boolean);
-
-  if (!lines.length || !lines.some((line) => line.includes('\t'))) return [];
-
-  const rows = lines
-    .map((line) => line.split('\t').map((cell) => cell.replace(/\u00A0/g, ' ').trim()))
-    .filter((cells) => cells.some((cell) => cell));
-
-  if (!rows.length) return [];
-
-  const lmsMyCoursesHeaderIndex = rows.findIndex((cells) => {
-    const line = normalizeHeader(cells.join(' '));
-    return (
-      line.includes(normalizeHeader('اسم النشاط التدريبي')) &&
-      line.includes(normalizeHeader('تاريخ البدء')) &&
-      line.includes(normalizeHeader('تاريخ الانتهاء')) &&
-      line.includes(normalizeHeader('الحالة')) &&
-      line.includes(normalizeHeader('القاعة'))
-    );
-  });
-
-  if (lmsMyCoursesHeaderIndex >= 0) {
-    const headers = rows[lmsMyCoursesHeaderIndex].map((header, index) => header || `col_${index}`);
-    const dataRows = rows
-      .slice(lmsMyCoursesHeaderIndex + 1)
-      .filter((cells) => cells.some((cell) => cell));
-
-    const records: CourseRecord[] = [];
-
-    for (const cells of dataRows) {
-      const row = Object.fromEntries(headers.map((header, index) => [header, cells[index] || '']));
-
-      const titleKey = findHeader(row, ['اسم النشاط التدريبي', 'اسم التدريب', 'اسم الدورة']);
-      const statusKey = findHeader(row, ['الحالة', 'status']);
-      const startDateKey = findHeader(row, ['تاريخ البدء', 'تاريخ البداية']);
-      const endDateKey = findHeader(row, ['تاريخ الانتهاء', 'تاريخ النهاية']);
-      const roomKey = findHeader(row, ['القاعة', 'قاعة']);
-      const executionPlaceKey = findHeader(row, ['مكان التنفيذ']);
-
-      const status = String(statusKey ? row[statusKey] ?? '' : '').trim();
-
-      const title = String(titleKey ? row[titleKey] ?? '' : '').trim();
-      const startDate = parseExcelDateValue(startDateKey ? row[startDateKey] : '');
-      const endDate = parseExcelDateValue(endDateKey ? row[endDateKey] : '');
-      const room = String(roomKey ? row[roomKey] ?? '' : '').trim();
-      const executionPlace = String(executionPlaceKey ? row[executionPlaceKey] ?? '' : '').trim();
-
-      const location = room || (normalizeHeader(executionPlace).includes(normalizeHeader('لندن')) ? 'خارجي' : executionPlace);
-
-      if (!title || !startDate || !endDate || !location) {
-        continue;
-      }
-
-      records.push({
-        title,
-        period: '',
-        participants: '',
-        startDate,
-        endDate,
-        location: normalizeLocation(location),
-      });
-    }
-
-    return records;
-  }
-
-  const headerIndex = rows.findIndex((cells) => {
-    const line = normalizeHeader(cells.join(' '));
-    return (
-      HEADER_CANDIDATES.title.some((candidate) => line.includes(normalizeHeader(candidate))) &&
-      HEADER_CANDIDATES.startDate.some((candidate) => line.includes(normalizeHeader(candidate)))
-    );
-  });
-
-  if (headerIndex >= 0) {
-    const headers = rows[headerIndex].map((header, index) => header || `col_${index}`);
-    const dataRows = rows.slice(headerIndex + 1).filter((cells) => cells.some((cell) => cell));
-    const objects = dataRows.map((cells) =>
-      Object.fromEntries(headers.map((header, index) => [header, cells[index] || '']))
-    );
-    return parseSheetRows(objects);
-  }
-
-  const likelyLmsRows = rows.filter((cells) => cells.filter(Boolean).length >= 20);
-  if (likelyLmsRows.length) {
-    const objects = likelyLmsRows.map((cells) =>
-      Object.fromEntries(DEFAULT_LMS_HEADERS.map((header, index) => [header, cells[index] || '']))
-    );
-    return parseSheetRows(objects);
-  }
-
-  return [];
 }
 
 function parseRowsFromPastedText(text: string) {
