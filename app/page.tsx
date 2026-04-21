@@ -201,7 +201,7 @@ const supportOptions = [
   'أخرى',
 ];
 
-const excelTemplateHeaders = ['عنوان الدورة', 'نوع الفترة', 'عدد المشاركين', 'تاريخ البداية', 'تاريخ النهاية', 'الموقع'];
+const excelTemplateHeaders = ['اسم النشاط التدريبي', 'مكان التنفيذ', 'تاريخ البدء', 'تاريخ الانتهاء', 'الحالة', 'اسم منسق التدريب', 'القاعة', 'عدد المشاركين'];
 const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 const arabicWeekdays = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
@@ -224,6 +224,7 @@ const MY_COURSES_HEADERS = {
   status: 'الحالة',
   coordinator: 'اسم منسق التدريب',
   hall: 'القاعة',
+  participants: 'عدد المشاركين',
   actions: 'الإجراءات',
 };
 
@@ -660,12 +661,20 @@ function parseSheetFromAoa(rows: unknown[][]) {
 
   const headerIndex = rows.findIndex((cells) => {
     const joined = normalizeHeader((cells || []).map((cell) => String(cell ?? '')).join(' '));
-    return (
+    const isLmsHeader =
       joined.includes(normalizeHeader('اسم التدريب')) &&
       joined.includes(normalizeHeader('تاريخ البدء')) &&
       joined.includes(normalizeHeader('تاريخ الانتهاء')) &&
-      joined.includes(normalizeHeader('توقيت'))
-    );
+      joined.includes(normalizeHeader('توقيت'));
+
+    const isMyCoursesHeader =
+      joined.includes(normalizeHeader('اسم النشاط التدريبي')) &&
+      joined.includes(normalizeHeader('مكان التنفيذ')) &&
+      joined.includes(normalizeHeader('تاريخ البدء')) &&
+      joined.includes(normalizeHeader('تاريخ الانتهاء')) &&
+      joined.includes(normalizeHeader('الحالة'));
+
+    return isLmsHeader || isMyCoursesHeader;
   });
 
   if (headerIndex < 0) return [];
@@ -743,6 +752,7 @@ function buildRecordFromMyCoursesRow(row: Record<string, unknown>) {
   const endDate = parseExcelDateValue(row[MY_COURSES_HEADERS.endDate]);
   const hall = String(row[MY_COURSES_HEADERS.hall] ?? '').trim();
   const executionPlace = String(row[MY_COURSES_HEADERS.executionPlace] ?? '').trim();
+  const participants = String(row[MY_COURSES_HEADERS.participants] ?? '').trim();
 
   if (!title || !startDate || !endDate) return null;
   if (status && !status.includes(normalizeHeader('مؤكد'))) return null;
@@ -1534,7 +1544,7 @@ export default function HomePage() {
   function downloadExcelTemplate() {
     const worksheet = XLSX.utils.aoa_to_sheet([
       excelTemplateHeaders,
-      ['أساليب الاستجواب المتقدمة لاكتشاف الجريمة', 'صباحية', '20', '2026-04-05', '2026-04-08', 'CLASS 1'],
+      ['أساليب الاستجواب المتقدمة لاكتشاف الجريمة', 'مبنى التدريب', '2026-04-05', '2026-04-08', 'مؤكد', 'أحمد محمد', 'CLASS 1', '20'],
     ]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Courses Template');
@@ -2141,7 +2151,7 @@ export default function HomePage() {
                           {fileName ? <div className="text-sm text-[#016564]">الملف الحالي: {fileName}</div> : null}
                           {importSummary ? <div className="text-xs font-medium text-[#498983]">{importSummary}</div> : null}
                         </div>
-                        <div className="mt-2 text-xs text-[#8c6968]">الأعمدة التي تلتقطها المنصة تلقائيًا من Excel: اسم التدريب | توقيت | الحد الأقصى للمقعد | تاريخ البدء | تاريخ الانتهاء | مكان التنفيذ | القاعة</div>
+                        <div className="mt-2 text-xs text-[#8c6968]">ترتيب نموذج Excel المعتمد: اسم النشاط التدريبي | مكان التنفيذ | تاريخ البدء | تاريخ الانتهاء | الحالة | اسم منسق التدريب | القاعة | عدد المشاركين</div>
                       </div>
                     )}
 
