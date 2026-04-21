@@ -864,46 +864,24 @@ function parseStructuredPastedRows(text: string) {
     for (const cells of dataRows) {
       const row = Object.fromEntries(headers.map((header, index) => [header, cells[index] || '']));
 
-      const status = String(
-        row['الحالة'] ||
-          row['Status'] ||
-          row['status'] ||
-          ''
-      ).trim();
+      const titleKey = findHeader(row, ['اسم النشاط التدريبي', 'اسم التدريب', 'اسم الدورة']);
+      const statusKey = findHeader(row, ['الحالة', 'status']);
+      const startDateKey = findHeader(row, ['تاريخ البدء', 'تاريخ البداية']);
+      const endDateKey = findHeader(row, ['تاريخ الانتهاء', 'تاريخ النهاية']);
+      const roomKey = findHeader(row, ['القاعة', 'قاعة']);
+      const executionPlaceKey = findHeader(row, ['مكان التنفيذ']);
+
+      const status = String(statusKey ? row[statusKey] ?? '' : '').trim();
 
       if (status && !normalizeHeader(status).includes(normalizeHeader('مؤكد'))) {
         continue;
       }
 
-      const title = String(
-        row['اسم النشاط التدريبي'] ||
-          row['اسم التدريب'] ||
-          row['اسم الدورة'] ||
-          ''
-      ).trim();
-
-      const startDate = parseExcelDateValue(
-        row['تاريخ البدء'] ||
-          row['تاريخ البداية'] ||
-          ''
-      );
-
-      const endDate = parseExcelDateValue(
-        row['تاريخ الانتهاء'] ||
-          row['تاريخ النهاية'] ||
-          ''
-      );
-
-      const room = String(
-        row['القاعة'] ||
-          row['قاعة'] ||
-          ''
-      ).trim();
-
-      const executionPlace = String(
-        row['مكان التنفيذ'] ||
-          ''
-      ).trim();
+      const title = String(titleKey ? row[titleKey] ?? '' : '').trim();
+      const startDate = parseExcelDateValue(startDateKey ? row[startDateKey] : '');
+      const endDate = parseExcelDateValue(endDateKey ? row[endDateKey] : '');
+      const room = String(roomKey ? row[roomKey] ?? '' : '').trim();
+      const executionPlace = String(executionPlaceKey ? row[executionPlaceKey] ?? '' : '').trim();
 
       const location = room || (normalizeHeader(executionPlace).includes(normalizeHeader('لندن')) ? 'خارجي' : executionPlace);
 
