@@ -201,7 +201,7 @@ const supportOptions = [
   'أخرى',
 ];
 
-const excelTemplateHeaders = ['اسم النشاط التدريبي', 'مكان التنفيذ', 'تاريخ البدء', 'تاريخ الانتهاء', 'الحالة', 'اسم منسق التدريب', 'القاعة', 'عدد المشاركين'];
+const excelTemplateHeaders = ['اسم النشاط التدريبي', 'مكان التنفيذ', 'تاريخ البدء', 'تاريخ الانتهاء', 'الحالة', 'اسم منسق التدريب', 'القاعة', 'عدد المشاركين', 'الفترة'];
 const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 const arabicWeekdays = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
@@ -225,6 +225,7 @@ const MY_COURSES_HEADERS = {
   coordinator: 'اسم منسق التدريب',
   hall: 'القاعة',
   participants: 'عدد المشاركين',
+  period: 'الفترة',
   actions: 'الإجراءات',
 };
 
@@ -765,6 +766,7 @@ function buildRecordFromMyCoursesRow(row: Record<string, unknown>) {
   const hall = String(row[MY_COURSES_HEADERS.hall] ?? '').trim();
   const executionPlace = String(row[MY_COURSES_HEADERS.executionPlace] ?? '').trim();
   const participants = normalizeArabicDigits(String(row[MY_COURSES_HEADERS.participants] ?? '').trim()).replace(/[^\d]/g, '');
+  const period = normalizePeriod(String(row[MY_COURSES_HEADERS.period] ?? '').trim());
 
   if (!title || !startDate || !endDate) return null;
 
@@ -775,7 +777,7 @@ function buildRecordFromMyCoursesRow(row: Record<string, unknown>) {
 
   return {
     title,
-    period: '',
+    period,
     participants,
     startDate,
     endDate,
@@ -1517,7 +1519,7 @@ export default function HomePage() {
 
       if (!validRows.length) {
         setImportSummary('');
-        setSystemNotice('تعذر قراءة ملف Excel الحالي. تأكد من أن الملف يحتوي الأعمدة التالية بالترتيب المعتمد: اسم النشاط التدريبي، مكان التنفيذ، تاريخ البدء، تاريخ الانتهاء، الحالة، اسم منسق التدريب، القاعة، عدد المشاركين.');
+        setSystemNotice('تعذر قراءة ملف Excel الحالي. تأكد من أن الملف يحتوي الأعمدة التالية بالترتيب المعتمد: اسم النشاط التدريبي، مكان التنفيذ، تاريخ البدء، تاريخ الانتهاء، الحالة، اسم منسق التدريب، القاعة، عدد المشاركين، الفترة.');
         setFileName('');
         setFileInputKey((prev) => prev + 1);
         return;
@@ -1555,7 +1557,7 @@ export default function HomePage() {
   function downloadExcelTemplate() {
     const worksheet = XLSX.utils.aoa_to_sheet([
       excelTemplateHeaders,
-      ['أساليب الاستجواب المتقدمة لاكتشاف الجريمة', 'مبنى التدريب', '2026-04-05', '2026-04-08', 'مؤكد', 'أحمد محمد', 'CLASS 1', '20'],
+      ['أساليب الاستجواب المتقدمة لاكتشاف الجريمة', 'مبنى التدريب', '2026-04-05', '2026-04-08', 'مؤكد', 'أحمد محمد', 'CLASS 1', '20', 'صباحية'],
     ]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Courses Template');
@@ -2162,7 +2164,7 @@ export default function HomePage() {
                           {fileName ? <div className="text-sm text-[#016564]">الملف الحالي: {fileName}</div> : null}
                           {importSummary ? <div className="text-xs font-medium text-[#498983]">{importSummary}</div> : null}
                         </div>
-                        <div className="mt-2 text-xs text-[#8c6968]">ترتيب نموذج Excel المعتمد: اسم النشاط التدريبي | مكان التنفيذ | تاريخ البدء | تاريخ الانتهاء | الحالة | اسم منسق التدريب | القاعة | عدد المشاركين</div>
+                        <div className="mt-2 text-xs text-[#8c6968]">ترتيب نموذج Excel المعتمد: اسم النشاط التدريبي | مكان التنفيذ | تاريخ البدء | تاريخ الانتهاء | الحالة | اسم منسق التدريب | القاعة | عدد المشاركين | الفترة</div>
                       </div>
                     )}
 
