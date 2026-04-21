@@ -653,7 +653,17 @@ function buildRecordFromLmsRow(row: Record<string, unknown>) {
 
 function parseSheetRows(rows: Record<string, unknown>[]) {
   if (!rows.length) return [];
-  return rows.map((row) => buildRecordFromLmsRow(row)).filter((item): item is CourseRecord => Boolean(item));
+
+  return rows
+    .map((row) => {
+      const isMyCoursesRow =
+        Object.prototype.hasOwnProperty.call(row, MY_COURSES_HEADERS.title) ||
+        Object.prototype.hasOwnProperty.call(row, MY_COURSES_HEADERS.executionPlace) ||
+        Object.prototype.hasOwnProperty.call(row, MY_COURSES_HEADERS.startDate);
+
+      return isMyCoursesRow ? buildRecordFromMyCoursesRow(row) : buildRecordFromLmsRow(row);
+    })
+    .filter((item): item is CourseRecord => Boolean(item));
 }
 
 function parseSheetFromAoa(rows: unknown[][]) {
@@ -667,14 +677,16 @@ function parseSheetFromAoa(rows: unknown[][]) {
       joined.includes(normalizeHeader('تاريخ الانتهاء')) &&
       joined.includes(normalizeHeader('توقيت'));
 
-    const isMyCoursesHeader =
+    const isWeeklyTemplateHeader =
       joined.includes(normalizeHeader('اسم النشاط التدريبي')) &&
       joined.includes(normalizeHeader('مكان التنفيذ')) &&
       joined.includes(normalizeHeader('تاريخ البدء')) &&
       joined.includes(normalizeHeader('تاريخ الانتهاء')) &&
-      joined.includes(normalizeHeader('الحالة'));
+      joined.includes(normalizeHeader('الحالة')) &&
+      joined.includes(normalizeHeader('القاعة')) &&
+      joined.includes(normalizeHeader('عدد المشاركين'));
 
-    return isLmsHeader || isMyCoursesHeader;
+    return isLmsHeader || isWeeklyTemplateHeader;
   });
 
   if (headerIndex < 0) return [];
@@ -752,10 +764,9 @@ function buildRecordFromMyCoursesRow(row: Record<string, unknown>) {
   const endDate = parseExcelDateValue(row[MY_COURSES_HEADERS.endDate]);
   const hall = String(row[MY_COURSES_HEADERS.hall] ?? '').trim();
   const executionPlace = String(row[MY_COURSES_HEADERS.executionPlace] ?? '').trim();
-  const participants = String(row[MY_COURSES_HEADERS.participants] ?? '').trim();
+  const participants = normalizeArabicDigits(String(row[MY_COURSES_HEADERS.participants] ?? '').trim()).replace(/[^\d]/g, '');
 
   if (!title || !startDate || !endDate) return null;
-  if (status && !status.includes(normalizeHeader('مؤكد'))) return null;
 
   const normalizedExecutionPlace = normalizeHeader(executionPlace);
   const location = /لندن|باريس|فرنسا|خارجي|خارج/i.test(normalizedExecutionPlace)
@@ -765,7 +776,7 @@ function buildRecordFromMyCoursesRow(row: Record<string, unknown>) {
   return {
     title,
     period: '',
-    participants: '',
+    participants,
     startDate,
     endDate,
     location: location || 'خارجي',
@@ -1506,7 +1517,7 @@ export default function HomePage() {
 
       if (!validRows.length) {
         setImportSummary('');
-        setSystemNotice('تعذر قراءة ملف Excel الحالي. تأكد من أن الملف هو جدول LMS الأصلي، وأن الأعمدة تشمل: اسم التدريب، توقيت، الحد الأقصى للمقعد، تاريخ البدء، تاريخ الانتهاء، مكان التنفيذ، والقاعة.');
+        setSystemNotice('تعذر قراءة ملف Excel الحالي. تأكد من أن الملف يحتوي الأعمدة التالية بالترتيب المعتمد: اسم النشاط التدريبي، مكان التنفيذ، تاريخ البدء، تاريخ الانتهاء، الحالة، اسم منسق التدريب، القاعة، عدد المشاركين.');
         setFileName('');
         setFileInputKey((prev) => prev + 1);
         return;
