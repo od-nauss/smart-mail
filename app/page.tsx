@@ -978,15 +978,20 @@ function parseFlattenedLmsCells(text: string) {
     const consumed = hall ? 7 : 6;
     const { startDate, endDate } = sortStartAndEndDates(dateA, dateB);
 
+    const location = normalizeLocation(hall || executionPlace);
+    if (!startDate || !endDate || !location) {
+      index += 1;
+      continue;
+    }
+
     records.push({
-      courseName: title,
-      executionPlace,
+      title,
+      period: '',
+      participants: '',
       startDate,
       endDate,
-      periodType: '',
-      hall,
-      participantsCount: '',
-    });
+      location,
+    } satisfies CourseRecord);
 
     index += consumed;
   }
@@ -998,7 +1003,11 @@ function parseRowsFromPastedText(text: string) {
   const structured = parseStructuredPastedRows(text);
   if (structured.length) return structured;
 
-  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+  const flattened = parseFlattenedLmsCells(text);
+  if (flattened.length) return flattened;
+
+  const lines = text.split('
+').map((line) => line.trim()).filter(Boolean);
   const records: CourseRecord[] = [];
 
   for (const line of lines) {
@@ -1011,13 +1020,18 @@ function parseRowsFromPastedText(text: string) {
       continue;
     }
 
+    const smartRecord = parseSmartLmsLine(line);
+    if (smartRecord) {
+      records.push(smartRecord);
+      continue;
+    }
+
     const record = parseCourseLine(line);
     if (record) records.push(record);
   }
 
   return records;
 }
-
 
 function stripLeadingSubjectRow(bodyHtml: string) {
   return String(bodyHtml || '')
