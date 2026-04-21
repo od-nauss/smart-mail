@@ -971,7 +971,7 @@ function parseFlattenedLmsCells(text: string) {
 
     const hallCandidate = cells[index + 6] || '';
     const nextTitleCandidate = cells[index + 7] || '';
-    const hallIsPresent = Boolean(hallCandidate) && !isDateCell(hallCandidate) && !/(?:مؤكد|قيد\s*التقدم|تم\s*الالغاء|تم\s*الإلغاء|مكتمل|ملغي)/.test(normalizeArabicText(hallCandidate));
+    const hallIsPresent = Boolean(hallCandidate) && !isDateCell(hallCandidate) && !/(?:مؤكد|قيد\s*التقدم|تم\s*الالغاء|تم\s*الإلغاء|مكتمل|ملغي)/.test(String(hallCandidate).replace(/[إأآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim());
     const nextLooksLikeNewRow = !nextTitleCandidate || !isDateCell(nextTitleCandidate);
 
     const hall = hallIsPresent && nextLooksLikeNewRow ? hallCandidate : '';
