@@ -1800,7 +1800,7 @@ ${draft.plainText}`;
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `${sanitizeFilename(draft.subject || 'general-message')}.eml`;
+      anchor.download = `${sanitizeAttachmentFilename(draft.subject || 'general-message')}.eml`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
