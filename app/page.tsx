@@ -8,9 +8,11 @@ import { Footer } from '@/components/layout/Footer';
 
 type HomeModuleKey = 'weekly' | 'operational' | 'leadership' | 'general';
 type DepartmentKey = 'hospitality' | 'security' | 'medical' | 'support';
-type WeeklyView = 'home' | 'form' | 'general';
+type WeeklyView = 'home' | 'form' | 'general' | 'leadership';
 type InputMode = 'excel' | 'manual' | 'paste';
 type GeneralStyleKey = 'executive' | 'concise' | 'persuasive' | 'engaging';
+type LeadershipTemplateKey = 'nomination_change' | 'external_supervisors' | 'eid_duty';
+
 type HospitalityItemKey =
   | 'breakfast'
   | 'saudiCoffee'
@@ -90,6 +92,23 @@ type ArchiveRecord = {
   startDate: string;
   label: string;
   snapshot?: WeeklySnapshot;
+};
+
+type LeadershipRow = {
+  id: string;
+  values: string[];
+};
+
+type LeadershipTemplate = {
+  key: LeadershipTemplateKey;
+  title: string;
+  shortTitle: string;
+  description: string;
+  icon: string;
+  subject: string;
+  columns: string[];
+  introPlaceholder: string;
+  detailsPlaceholder: string;
 };
 
 const ARCHIVE_KEY = 'smart-mail-weekly-archive-v2';
@@ -257,6 +276,42 @@ const DEFAULT_LMS_HEADERS = [
   'النوع الفرعي للتسعير',
   'الحد الأقصى للمقعد',
   'السعر',
+];
+
+const leadershipTemplates: LeadershipTemplate[] = [
+  {
+    key: 'nomination_change',
+    title: 'تعديل ترشيح المشرفين للدورات التدريبية',
+    shortTitle: 'تعديل ترشيح المشرفين',
+    description: 'اعتماد تعديل الترشيحات السابقة للمشرفين على الدورات التدريبية.',
+    icon: '📝',
+    subject: 'اعتماد تعديل ترشيح المشرفين للدورات التدريبية',
+    columns: ['اسم الدورة', 'تاريخ البداية', 'تاريخ النهاية', 'اسم المكلف السابق', 'اسم البديل', 'ملاحظات'],
+    introPlaceholder: 'مثال: بالإشارة إلى الترشيحات السابقة للمشرفين، نأمل اعتماد التعديل الوارد أدناه.',
+    detailsPlaceholder: 'سبب التعديل أو أي إيضاح إضافي عند الحاجة.',
+  },
+  {
+    key: 'external_supervisors',
+    title: 'اعتماد ترشيح مشرفين لدورات خارجية',
+    shortTitle: 'مشرفون لدورات خارجية',
+    description: 'رفع طلب اعتماد ترشيح المشرفين المكلفين بالدورات الخارجية.',
+    icon: '✈️',
+    subject: 'اعتماد ترشيح مشرفين لدورات خارجية',
+    columns: ['اسم الدورة', 'المدينة أو الدولة', 'تاريخ البداية', 'تاريخ النهاية', 'اسم المشرف المرشح', 'صفة التكليف', 'ملاحظات'],
+    introPlaceholder: 'مثال: نأمل من سعادتكم التكرم بالموافقة على اعتماد المشرفين المرشحين للدورات الخارجية الموضحة أدناه.',
+    detailsPlaceholder: 'أي توضيح متعلق بالسفر أو طبيعة المهمة أو الملاحظات الإدارية.',
+  },
+  {
+    key: 'eid_duty',
+    title: 'الموافقة على تكليف الموظفين لدوام العيد',
+    shortTitle: 'تكليف موظفي دوام العيد',
+    description: 'طلب اعتماد تكليف الموظفين لتغطية الأعمال التشغيلية خلال إجازة العيد.',
+    icon: '🕌',
+    subject: 'الموافقة على تكليف الموظفين لدوام العيد',
+    columns: ['اسم الموظف', 'الفترة', 'المهام', 'ملاحظات'],
+    introPlaceholder: 'مثال: نظرًا لوجود أعمال تشغيلية تتطلب المتابعة خلال فترة إجازة العيد، نأمل الموافقة على التكليفات أدناه.',
+    detailsPlaceholder: 'أي تفاصيل تشغيلية إضافية مثل الفترة أو نطاق العمل أو المبررات.',
+  },
 ];
 
 const lmsLocationHints: Array<{ pattern: RegExp; value: string }> = [
@@ -1555,6 +1610,145 @@ ${details ? `${details}.
   };
 }
 
+function getLeadershipTemplateConfig(key: LeadershipTemplateKey) {
+  return leadershipTemplates.find((item) => item.key === key) || leadershipTemplates[0];
+}
+
+function createLeadershipRow(columnCount: number): LeadershipRow {
+  return {
+    id: `lead-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    values: Array.from({ length: columnCount }, () => ''),
+  };
+}
+
+function normalizeLeadershipCell(value: string) {
+  return String(value || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function parseLeadershipPastedRows(text: string, templateKey: LeadershipTemplateKey): LeadershipRow[] {
+  const raw = String(text || '').trim();
+  if (!raw) return [];
+  const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const config = getLeadershipTemplateConfig(templateKey);
+  const rows: LeadershipRow[] = [];
+
+  const normalizedHeader = config.columns.map((item) => normalizeHeader(item));
+
+  for (const line of lines) {
+    const parts = line.split('	').map(normalizeLeadershipCell);
+    if (!parts.some(Boolean)) continue;
+
+    const normalizedParts = parts.map((item) => normalizeHeader(item));
+    const looksLikeHeader = normalizedParts.every((item, index) => item === normalizedHeader[index] || normalizedHeader.includes(item));
+    if (looksLikeHeader) continue;
+
+    if (templateKey === 'external_supervisors' && parts.length >= 6) {
+      const values = [
+        parts[0] || '',
+        normalizeLocation(parts[1] || parts[6] || ''),
+        parseExcelDateValue(parts[2] || ''),
+        parseExcelDateValue(parts[3] || ''),
+        parts[5] || '',
+        parts[5] ? 'مشرف تنفيذي' : '',
+        parts[6] ? `القاعة: ${parts[6]}` : '',
+      ];
+      rows.push({ id: `lead-${rows.length}-${Date.now()}`, values });
+      continue;
+    }
+
+    const values = Array.from({ length: config.columns.length }, (_, index) => {
+      if (index >= parts.length) return '';
+      const rawValue = parts[index] || '';
+      if (config.columns[index].includes('تاريخ')) return parseExcelDateValue(rawValue);
+      if (config.columns[index].includes('المدينة') || config.columns[index].includes('الدولة')) return normalizeLocation(rawValue);
+      return rawValue;
+    });
+
+    rows.push({ id: `lead-${rows.length}-${Date.now()}`, values });
+  }
+
+  return rows.filter((row) => row.values.some((value) => String(value || '').trim()));
+}
+
+function parseLeadershipSheetAoa(aoa: unknown[][], templateKey: LeadershipTemplateKey): LeadershipRow[] {
+  const config = getLeadershipTemplateConfig(templateKey);
+  const rows = (aoa || []).filter((row) => Array.isArray(row) && row.some((cell) => String(cell || '').trim()));
+  if (!rows.length) return [];
+
+  const headerRow = rows[0].map((cell) => normalizeHeader(String(cell || '')));
+  const expected = config.columns.map((item) => normalizeHeader(item));
+  const headerMatches = expected.every((item, index) => headerRow[index] === item);
+  const dataRows = headerMatches ? rows.slice(1) : rows;
+
+  return dataRows.map((row, rowIndex) => {
+    const values = Array.from({ length: config.columns.length }, (_, index) => {
+      const rawValue = normalizeLeadershipCell(String(row[index] || ''));
+      if (config.columns[index].includes('تاريخ')) return parseExcelDateValue(rawValue);
+      if (config.columns[index].includes('المدينة') || config.columns[index].includes('الدولة')) return normalizeLocation(rawValue);
+      return rawValue;
+    });
+    return { id: `lead-excel-${rowIndex}-${Date.now()}`, values };
+  }).filter((row) => row.values.some(Boolean));
+}
+
+function buildLeadershipTableHtml(columns: string[], rows: LeadershipRow[]) {
+  const head = columns.map((column) => `<th style="border:1px solid #d6d7d4;padding:10px 8px;background:#016564;color:#fff;font-weight:700;">${escapeHtml(column)}</th>`).join('');
+  const body = rows.map((row) => `<tr>${row.values.map((value) => `<td style="border:1px solid #d6d7d4;padding:10px 8px;vertical-align:top;">${escapeHtml(value || '-')}</td>`).join('')}</tr>`).join('');
+  return `<table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:15px;"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function buildLeadershipTableText(columns: string[], rows: LeadershipRow[]) {
+  const header = columns.join(' | ');
+  const divider = columns.map(() => '---').join(' | ');
+  const lines = rows.map((row) => row.values.map((value) => value || '-').join(' | '));
+  return [header, divider, ...lines].join('\n');
+}
+
+function generateLeadershipDraft(params: {
+  recipient: string;
+  template: LeadershipTemplate;
+  intro: string;
+  details: string;
+  rows: LeadershipRow[];
+}) {
+  const recipient = params.recipient.trim() || 'سعادة وكيل الجامعة للتدريب';
+  const intro = params.intro.trim();
+  const details = params.details.trim();
+  const rows = params.rows.filter((row) => row.values.some((value) => String(value || '').trim()));
+  const introText = intro || params.template.introPlaceholder;
+  const detailsBlock = details ? `<p style="margin:0 0 12px 0;">${escapeHtml(details)}</p>` : '';
+  const html = `
+    <div style="font-family:Cairo,Arial,sans-serif;line-height:1.95;color:#1f2937;text-align:right;direction:rtl;">
+      <p style="margin:0 0 8px 0;">${escapeHtml(recipient)} سلمه الله</p>
+      <p style="margin:0 0 16px 0;">السلام عليكم ورحمة الله وبركاته،</p>
+      <p style="margin:0 0 12px 0;">${escapeHtml(introText)}</p>
+      ${detailsBlock}
+      ${buildLeadershipTableHtml(params.template.columns, rows)}
+      <p style="margin:14px 0 0 0;">وتفضلوا بقبول خالص التحية والتقدير.</p>
+    </div>
+  `.trim();
+
+  const plainText = [
+    `${recipient} سلمه الله`,
+    '',
+    'السلام عليكم ورحمة الله وبركاته،',
+    '',
+    introText,
+    details ? `
+${details}` : '',
+    '',
+    buildLeadershipTableText(params.template.columns, rows),
+    '',
+    'وتفضلوا بقبول خالص التحية والتقدير.',
+  ].filter(Boolean).join('\n');
+
+  return {
+    subject: params.template.subject,
+    plainText,
+    html,
+  };
+}
+
 export default function HomePage() {
   const [weeklyView, setWeeklyView] = useState<WeeklyView>('home');
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentKey | null>(null);
@@ -1575,6 +1769,16 @@ export default function HomePage() {
   const [generalStyle, setGeneralStyle] = useState<GeneralStyleKey>('executive');
   const [generalVariant, setGeneralVariant] = useState(0);
   const [generalDraft, setGeneralDraft] = useState<{ subject: string; plainText: string; html: string } | null>(null);
+  const [leadershipTemplate, setLeadershipTemplate] = useState<LeadershipTemplateKey>('nomination_change');
+  const [leadershipInputMode, setLeadershipInputMode] = useState<InputMode>('manual');
+  const [leadershipRecipient, setLeadershipRecipient] = useState('سعادة وكيل الجامعة للتدريب');
+  const [leadershipIntro, setLeadershipIntro] = useState('');
+  const [leadershipDetails, setLeadershipDetails] = useState('');
+  const [leadershipRows, setLeadershipRows] = useState<LeadershipRow[]>(() => [createLeadershipRow(getLeadershipTemplateConfig('nomination_change').columns.length)]);
+  const [leadershipPastedText, setLeadershipPastedText] = useState('');
+  const [leadershipFileName, setLeadershipFileName] = useState('');
+  const [leadershipDraft, setLeadershipDraft] = useState<{ subject: string; plainText: string; html: string } | null>(null);
+  const [leadershipFileInputKey, setLeadershipFileInputKey] = useState(0);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const [courseForm, setCourseForm] = useState<CourseRecord>({
@@ -1621,6 +1825,7 @@ export default function HomePage() {
   const autoSubject = useMemo(() => getAutoSubject(startDate), [startDate]);
   const weekLabel = useMemo(() => getWeekLabelFromDate(startDate), [startDate]);
   const formattedStartDate = useMemo(() => getFormattedStartDate(startDate), [startDate]);
+  const selectedLeadershipTemplate = useMemo(() => getLeadershipTemplateConfig(leadershipTemplate), [leadershipTemplate]);
 
   useEffect(() => {
     if (!courses.length) return;
@@ -1633,6 +1838,23 @@ export default function HomePage() {
   useEffect(() => {
     void refreshSharedArchive(true);
   }, []);
+
+  useEffect(() => {
+    setLeadershipRows((prev) => {
+      const columnCount = selectedLeadershipTemplate.columns.length;
+      if (!prev.length) return [createLeadershipRow(columnCount)];
+      return prev.map((row) => ({
+        ...row,
+        values: Array.from({ length: columnCount }, (_, index) => row.values[index] || ''),
+      }));
+    });
+    setLeadershipRecipient('سعادة وكيل الجامعة للتدريب');
+    setLeadershipIntro('');
+    setLeadershipDetails('');
+    setLeadershipPastedText('');
+    setLeadershipFileName('');
+    setLeadershipDraft(null);
+  }, [leadershipTemplate, selectedLeadershipTemplate.columns.length]);
 
   useEffect(() => {
     try {
@@ -1818,6 +2040,127 @@ ${draft.plainText}`;
       setSystemNotice('تعذر تنزيل مسودة البريد حاليًا.');
     }
   }
+
+  function resetLeadershipForm() {
+    setLeadershipRecipient('سعادة وكيل الجامعة للتدريب');
+    setLeadershipIntro('');
+    setLeadershipDetails('');
+    setLeadershipPastedText('');
+    setLeadershipFileName('');
+    setLeadershipDraft(null);
+    setLeadershipRows([createLeadershipRow(selectedLeadershipTemplate.columns.length)]);
+    setLeadershipInputMode('manual');
+    setLeadershipFileInputKey((prev) => prev + 1);
+  }
+
+  function updateLeadershipCell(rowId: string, columnIndex: number, value: string) {
+    setLeadershipRows((prev) => prev.map((row) => row.id === rowId ? { ...row, values: row.values.map((cell, idx) => idx === columnIndex ? value : cell) } : row));
+  }
+
+  function addLeadershipRow() {
+    setLeadershipRows((prev) => [...prev, createLeadershipRow(selectedLeadershipTemplate.columns.length)]);
+  }
+
+  function removeLeadershipRow(rowId: string) {
+    setLeadershipRows((prev) => {
+      const next = prev.filter((row) => row.id !== rowId);
+      return next.length ? next : [createLeadershipRow(selectedLeadershipTemplate.columns.length)];
+    });
+  }
+
+  async function handleLeadershipExcelUpload(file: File) {
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array', cellDates: true, raw: true });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const aoa = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: true }) as unknown[][];
+      const rows = parseLeadershipSheetAoa(aoa, leadershipTemplate);
+      if (!rows.length) {
+        setSystemNotice('تعذر قراءة ملف Excel الحالي لهذا النموذج.');
+        return;
+      }
+      setLeadershipRows(rows);
+      setLeadershipFileName(file.name);
+      setLeadershipDraft(null);
+      setSystemNotice(`تم استيراد ${rows.length} صف من ملف Excel.`);
+    } catch {
+      setSystemNotice('حدث خطأ أثناء قراءة ملف Excel.');
+    }
+  }
+
+  function applyLeadershipSmartPaste() {
+    const rows = parseLeadershipPastedRows(leadershipPastedText, leadershipTemplate);
+    if (!rows.length) {
+      setSystemNotice('تعذر فهم النص الملصوق لهذا النموذج.');
+      return;
+    }
+    setLeadershipRows(rows);
+    setLeadershipDraft(null);
+    setSystemNotice(`تم تحويل ${rows.length} صف من النص الملصوق.`);
+  }
+
+  function buildLeadershipDraft() {
+    const rows = leadershipRows.filter((row) => row.values.some((value) => String(value || '').trim()));
+    if (!rows.length) {
+      setSystemNotice('أدخل صفًا واحدًا على الأقل قبل صياغة الرسالة.');
+      return null;
+    }
+    const draft = generateLeadershipDraft({
+      recipient: leadershipRecipient,
+      template: selectedLeadershipTemplate,
+      intro: leadershipIntro,
+      details: leadershipDetails,
+      rows,
+    });
+    setLeadershipDraft(draft);
+    return draft;
+  }
+
+  async function copyLeadershipText() {
+    const draft = leadershipDraft || buildLeadershipDraft();
+    if (!draft) return;
+    try {
+      await navigator.clipboard.writeText(`الموضوع: ${draft.subject}\n\n${draft.plainText}`);
+      setSystemNotice('تم نسخ نص مراسلة الإدارة العليا.');
+    } catch {
+      setSystemNotice('تعذر نسخ النص حاليًا.');
+    }
+  }
+
+  async function downloadLeadershipEml() {
+    const draft = leadershipDraft || buildLeadershipDraft();
+    if (!draft) return;
+    try {
+      const eml = await buildOutlookDraftEml('', '', draft.subject, draft.html, []);
+      const blob = new Blob([eml], { type: 'message/rfc822;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${sanitizeAttachmentFilename(draft.subject || 'leadership-message')}.eml`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setSystemNotice('تم تنزيل مسودة مراسلة الإدارة العليا بصيغة EML.');
+    } catch {
+      setSystemNotice('تعذر تنزيل مسودة البريد حاليًا.');
+    }
+  }
+
+  function downloadLeadershipTemplateCsv() {
+    const header = selectedLeadershipTemplate.columns.join(',');
+    const blob = new Blob([`﻿${header}\n`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${sanitizeAttachmentFilename(selectedLeadershipTemplate.shortTitle)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setSystemNotice('تم تنزيل نموذج الجدول لهذا النوع من المراسلات.');
+  }
+
   function resetCourseForm() {
     setCourseForm({
       title: '',
@@ -2489,6 +2832,27 @@ ${draft.plainText}`;
                           </div>
                         </button>
                       </div>
+                    ) : module.key === 'leadership' ? (
+                      <div className="rounded-2xl border border-[#e7dcc7] bg-[#fbfaf7] p-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setWeeklyView('leadership')}
+                          className="group flex w-full items-center justify-between rounded-2xl border border-[#d0b284] bg-white px-4 py-4 text-right transition hover:border-[#016564] hover:shadow-sm"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#7c1e3e]/10 text-xl">📌</div>
+                            <div>
+                              <div className="text-sm font-semibold text-[#016564]">مراسلات الإدارة العليا الذكية</div>
+                              <div className="mt-0.5 text-xs text-[#8c6968]">3 نماذج جاهزة للوكيل مع جدول ذكي ونسخ وملف EML</div>
+                            </div>
+                          </div>
+                          <div className="text-[#d0b284] transition group-hover:translate-x-[-4px]">
+                            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                              <path d="M9 6l6 6-6 6" />
+                            </svg>
+                          </div>
+                        </button>
+                      </div>
                     ) : (
                       <div className="rounded-2xl border border-dashed border-[#d6d7d4] bg-[#fcfdfd] px-4 py-4 text-right">
                         <div className="text-sm font-semibold text-[#8c6968]">قريبًا</div>
@@ -2500,6 +2864,152 @@ ${draft.plainText}`;
             </>
           )}
 
+
+{weeklyView === 'leadership' && (
+  <>
+    <div className="mb-5 flex items-center justify-between gap-3">
+      <div>
+        <h2 className="text-2xl font-semibold text-[#016564]">مراسلات الإدارة العليا الذكية</h2>
+        <p className="mt-1 text-sm text-[#8c6968]">قوالب تشغيلية متكررة للوكيل مع جدول ذكي واستيراد ونسخ وملف EML</p>
+      </div>
+      <button type="button" onClick={() => { resetLeadershipForm(); setWeeklyView('home'); }} className="rounded-xl border border-[#d6d7d4] bg-white px-4 py-2 text-sm font-semibold text-[#016564]">
+        العودة للرئيسية
+      </button>
+    </div>
+
+    <section className="mb-5 grid grid-cols-1 gap-3 xl:grid-cols-3">
+      {leadershipTemplates.map((template) => {
+        const active = leadershipTemplate === template.key;
+        return (
+          <button
+            key={template.key}
+            type="button"
+            onClick={() => setLeadershipTemplate(template.key)}
+            className={`rounded-[22px] border bg-white p-4 text-right shadow-sm transition ${active ? 'border-[#7c1e3e] bg-[#fcf7f9]' : 'border-[#e1e5e5] hover:border-[#d0b284]'}`}
+          >
+            <div className="mb-2 text-2xl">{template.icon}</div>
+            <div className="text-sm font-semibold text-[#016564]">{template.shortTitle}</div>
+            <div className="mt-1 text-xs leading-6 text-[#8c6968]">{template.description}</div>
+          </button>
+        );
+      })}
+    </section>
+
+    <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="rounded-[28px] border border-[#e2e7e7] bg-white p-5 shadow-sm">
+        <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <label className="block">
+            <div className="mb-2 text-sm font-semibold text-[#016564]">المرسل إليه</div>
+            <input value={leadershipRecipient} onChange={(e) => setLeadershipRecipient(e.target.value)} className="w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]" placeholder="مثال: سعادة وكيل الجامعة للتدريب" />
+          </label>
+          <label className="block">
+            <div className="mb-2 text-sm font-semibold text-[#016564]">الموضوع</div>
+            <input value={selectedLeadershipTemplate.subject} readOnly className="w-full rounded-2xl border border-[#d6d7d4] bg-[#f8f9f9] px-4 py-3 text-sm text-[#5a5a5a]" />
+          </label>
+        </div>
+
+        <label className="mb-4 block">
+          <div className="mb-2 text-sm font-semibold text-[#016564]">التمهيد</div>
+          <textarea value={leadershipIntro} onChange={(e) => setLeadershipIntro(e.target.value)} rows={3} className="w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]" placeholder={selectedLeadershipTemplate.introPlaceholder} />
+        </label>
+
+        <label className="mb-5 block">
+          <div className="mb-2 text-sm font-semibold text-[#016564]">تفاصيل أو ملاحظات إضافية</div>
+          <textarea value={leadershipDetails} onChange={(e) => setLeadershipDetails(e.target.value)} rows={3} className="w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]" placeholder={selectedLeadershipTemplate.detailsPlaceholder} />
+        </label>
+
+        <div className="mb-4 flex flex-wrap gap-3">
+          {(['manual','paste','excel'] as InputMode[]).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setLeadershipInputMode(mode)}
+              className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${leadershipInputMode === mode ? 'bg-[#016564] text-white' : 'border border-[#d6d7d4] bg-white text-[#016564]'}`}
+            >
+              {mode === 'manual' ? 'يدوي' : mode === 'paste' ? 'لصق ذكي' : 'Excel'}
+            </button>
+          ))}
+          <button type="button" onClick={downloadLeadershipTemplateCsv} className="rounded-2xl border border-[#d6d7d4] bg-white px-4 py-2 text-sm font-semibold text-[#016564]">تنزيل النموذج</button>
+        </div>
+
+        {leadershipInputMode === 'excel' ? (
+          <div className="mb-5 rounded-3xl border border-[#e1e5e5] bg-[#fcfdfd] p-4">
+            <div className="mb-2 text-sm font-semibold text-[#016564]">استيراد Excel</div>
+            <input key={leadershipFileInputKey} type="file" accept=".xlsx,.xls,.csv" onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleLeadershipExcelUpload(file); }} className="block w-full text-sm" />
+            {leadershipFileName ? <div className="mt-2 text-xs text-[#8c6968]">الملف الحالي: {leadershipFileName}</div> : null}
+          </div>
+        ) : null}
+
+        {leadershipInputMode === 'paste' ? (
+          <div className="mb-5 rounded-3xl border border-[#e1e5e5] bg-[#fcfdfd] p-4">
+            <div className="mb-2 text-sm font-semibold text-[#016564]">اللصق الذكي</div>
+            <textarea value={leadershipPastedText} onChange={(e) => setLeadershipPastedText(e.target.value)} rows={6} className="w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]" placeholder={leadershipTemplate === 'external_supervisors' ? 'الصق صفوف LMS مباشرة: اسم النشاط التدريبي، مكان التنفيذ، تاريخ البدء، تاريخ الانتهاء، الحالة، اسم منسق التدريب، القاعة' : `الصق الصفوف بالترتيب: ${selectedLeadershipTemplate.columns.join('، ')}`} />
+            <div className="mt-3 flex justify-end">
+              <button type="button" onClick={applyLeadershipSmartPaste} className="rounded-2xl bg-[#016564] px-4 py-2 text-sm font-semibold text-white">تحويل إلى جدول</button>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="overflow-x-auto rounded-3xl border border-[#e1e5e5]">
+          <table className="min-w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-[#016564] text-white">
+                {selectedLeadershipTemplate.columns.map((column) => (
+                  <th key={column} className="border border-[#d6d7d4] px-3 py-3 text-center font-semibold">{column}</th>
+                ))}
+                <th className="border border-[#d6d7d4] px-3 py-3 text-center font-semibold">إجراء</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leadershipRows.map((row, rowIndex) => (
+                <tr key={row.id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-[#f8f9f9]'}>
+                  {selectedLeadershipTemplate.columns.map((column, columnIndex) => (
+                    <td key={`${row.id}-${columnIndex}`} className="border border-[#e1e5e5] p-2 align-top">
+                      <input
+                        value={row.values[columnIndex] || ''}
+                        onChange={(e) => updateLeadershipCell(row.id, columnIndex, e.target.value)}
+                        className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2 outline-none transition focus:border-[#016564]"
+                        placeholder={column}
+                      />
+                    </td>
+                  ))}
+                  <td className="border border-[#e1e5e5] p-2 text-center">
+                    <button type="button" onClick={() => removeLeadershipRow(row.id)} className="text-sm font-semibold text-[#7c1e3e]">حذف</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button type="button" onClick={addLeadershipRow} className="rounded-2xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">إضافة صف</button>
+          <button type="button" onClick={() => buildLeadershipDraft()} className="rounded-2xl bg-[#016564] px-4 py-3 text-sm font-semibold text-white">صياغة الرسالة</button>
+          <button type="button" onClick={copyLeadershipText} className="rounded-2xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">نسخ النص</button>
+          <button type="button" onClick={downloadLeadershipEml} className="rounded-2xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">تنزيل EML</button>
+        </div>
+      </div>
+
+      <div className="rounded-[28px] border border-[#e2e7e7] bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-[#016564]">المعاينة</h3>
+            <p className="mt-1 text-xs text-[#8c6968]">ستظهر هنا صياغة مراسلة الإدارة العليا مع الجدول.</p>
+          </div>
+          <div className="rounded-2xl bg-[#f7f9f9] px-3 py-2 text-xs font-semibold text-[#8c6968]">{selectedLeadershipTemplate.shortTitle}</div>
+        </div>
+        {leadershipDraft ? (
+          <div>
+            <div className="mb-3 rounded-2xl bg-[#f7fbfb] px-4 py-3 text-sm font-semibold text-[#016564]">الموضوع: {leadershipDraft.subject}</div>
+            <div className="mb-4 whitespace-pre-wrap text-sm leading-8 text-[#2b3a3a]">{leadershipDraft.plainText}</div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-[#d6d7d4] p-4 text-sm leading-7 text-[#8c6968]">اختر نوع المراسلة، ثم أدخل البيانات أو استورد الجدول، وبعدها اضغط صياغة الرسالة.</div>
+        )}
+      </div>
+    </section>
+  </>
+)}
 
 {weeklyView === 'general' && (
   <>
