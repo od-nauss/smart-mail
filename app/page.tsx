@@ -262,6 +262,13 @@ const lmsLocationHints: Array<{ pattern: RegExp; value: string }> = [
   { pattern: /مركز\s*الأمن\s*السيبراني/i, value: 'مركز الأمن السيبراني' },
   { pattern: /مركز\s*الذكاء\s*الاصطناعي/i, value: 'مركز الذكاء الاصطناعي' },
   { pattern: /النادي\s*الرياضي/i, value: 'النادي الرياضي' },
+  { pattern: /لندن|london/i, value: 'خارجي' },
+  { pattern: /أسان|اسان|asan/i, value: 'خارجي' },
+  { pattern: /باريس|paris/i, value: 'خارجي' },
+  { pattern: /فرنسا|france/i, value: 'خارجي' },
+  { pattern: /رومانيا|romania/i, value: 'خارجي' },
+  { pattern: /بولندا|poland/i, value: 'خارجي' },
+  { pattern: /كوريا|korea/i, value: 'خارجي' },
   { pattern: /vr/i, value: 'قاعة VR' },
   { pattern: /خبير/i, value: 'معمل خبير' },
 ];
@@ -641,7 +648,9 @@ function normalizeLocation(value: string) {
     if (hint.pattern.test(raw)) return hint.value;
   }
 
-  if (/خارجي|خارج الجامعة|خارج/i.test(raw)) return 'خارجي';
+  if (/خارجي|خارج\s*الجامعة|خارج|لندن|london|أسان|اسان|asan|باريس|paris|فرنسا|france|رومانيا|romania|بولندا|poland|كوريا|korea/i.test(raw)) {
+    return 'خارجي';
+  }
 
   return raw;
 }
