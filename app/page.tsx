@@ -1439,11 +1439,14 @@ const generalStyleOptions: Array<{ key: GeneralStyleKey; label: string; descript
   { key: 'engaging', label: 'تفاعلي راقٍ', description: 'راقي وحيوي مع بقاء الرسمية.' },
 ];
 
-function resolveRecipientTitle(recipient: string) {
+function resolveRecipientTitle(recipient: string, honorific?: string) {
   const raw = String(recipient || '').trim();
+  const selectedHonorific = String(honorific || '').trim();
   if (!raw) return 'سعادة المسؤول المختص حفظه الله';
-  if (/^سعادة|^معالي|^فضيلة|^الدكتور|^الأستاذ/i.test(raw)) return raw;
+  if (/^سعادة|^معالي|^فضيلة|^الدكتور|^الأستاذ|^الأستاذة/i.test(raw)) return raw;
   if (/وكيل التدريب|وكيل الجامعة للتدريب/i.test(raw)) return 'سعادة وكيل الجامعة للتدريب حفظه الله';
+  if (selectedHonorific === 'الأستاذ') return `الأستاذ ${raw} حفظه الله`;
+  if (selectedHonorific === 'الأستاذة') return `الأستاذة ${raw} حفظها الله`;
   if (/مدير/i.test(raw)) return `سعادة ${raw} سلمه الله`;
   return `سعادة ${raw} حفظه الله`;
 }
@@ -1457,13 +1460,14 @@ function sentenceFromRequest(value: string) {
 
 function generateGeneralEmail(params: {
   recipient: string;
+  honorific?: string;
   subject: string;
   request: string;
   details: string;
   style: GeneralStyleKey;
   variant: number;
 }) {
-  const recipientTitle = resolveRecipientTitle(params.recipient);
+  const recipientTitle = resolveRecipientTitle(params.recipient, params.honorific);
   const subject = String(params.subject || '').trim();
   const request = sentenceFromRequest(params.request);
   const details = String(params.details || '').trim();
@@ -1564,6 +1568,7 @@ export default function HomePage() {
   const [fileName, setFileName] = useState('');
   const [pastedText, setPastedText] = useState('');
   const [generalRecipient, setGeneralRecipient] = useState('');
+  const [generalHonorific, setGeneralHonorific] = useState('');
   const [generalSubject, setGeneralSubject] = useState('');
   const [generalRequest, setGeneralRequest] = useState('');
   const [generalDetails, setGeneralDetails] = useState('');
@@ -1731,6 +1736,7 @@ export default function HomePage() {
 
   function resetGeneralForm() {
     setGeneralRecipient('');
+    setGeneralHonorific('');
     setGeneralSubject('');
     setGeneralRequest('');
     setGeneralDetails('');
@@ -1748,6 +1754,7 @@ export default function HomePage() {
     const variantValue = typeof nextVariant === 'number' ? nextVariant : generalVariant;
     const draft = generateGeneralEmail({
       recipient: generalRecipient,
+      honorific: generalHonorific,
       subject: generalSubject,
       request: generalRequest,
       details: generalDetails,
@@ -1767,6 +1774,7 @@ export default function HomePage() {
     setGeneralVariant(nextVariant);
     const draft = generateGeneralEmail({
       recipient: generalRecipient,
+      honorific: generalHonorific,
       subject: generalSubject,
       request: generalRequest,
       details: generalDetails,
