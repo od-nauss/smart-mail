@@ -655,6 +655,11 @@ function normalizeLocation(value: string) {
   return raw;
 }
 
+function isRecognizedLocationCell(value: string) {
+  const normalized = normalizeLocation(String(value || '').trim());
+  return Boolean(normalized) && (locations.includes(normalized) || normalized === 'خارجي');
+}
+
 function buildCourseRecord(input: {
   title?: unknown;
   period?: unknown;
@@ -980,8 +985,8 @@ function parseFlattenedLmsCells(text: string) {
 
     const hallCandidate = cells[index + 6] || '';
     const nextTitleCandidate = cells[index + 7] || '';
-    const hallIsPresent = Boolean(hallCandidate) && !isDateCell(hallCandidate) && !/(?:مؤكد|قيد\s*التقدم|تم\s*الالغاء|تم\s*الإلغاء|مكتمل|ملغي)/.test(String(hallCandidate).replace(/[إأآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim());
-    const nextLooksLikeNewRow = !nextTitleCandidate || !isDateCell(nextTitleCandidate);
+    const hallIsPresent = isRecognizedLocationCell(hallCandidate);
+    const nextLooksLikeNewRow = !nextTitleCandidate || !isRecognizedLocationCell(nextTitleCandidate);
 
     const hall = hallIsPresent && nextLooksLikeNewRow ? hallCandidate : '';
     const consumed = hall ? 7 : 6;
@@ -1502,10 +1507,44 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem(WEEKLY_DRAFT_KEY);
+      if (!savedDraft) return;
+      const draft = JSON.parse(savedDraft);
+      if (draft.weeklyView) setWeeklyView(draft.weeklyView);
+      if (draft.selectedDepartment !== undefined) setSelectedDepartment(draft.selectedDepartment);
+      if (draft.inputMode) setInputMode(draft.inputMode);
+      if (draft.cc !== undefined) setCc(draft.cc);
+      if (draft.startDate !== undefined) setStartDate(draft.startDate);
+      if (Array.isArray(draft.courses)) setCourses(draft.courses);
+      if (draft.fileName !== undefined) setFileName(draft.fileName);
+      if (draft.pastedText !== undefined) setPastedText(draft.pastedText);
+      if (draft.importSummary !== undefined) setImportSummary(draft.importSummary);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
     if (!systemNotice) return;
     const timer = window.setTimeout(() => setSystemNotice(''), 3500);
     return () => window.clearTimeout(timer);
   }, [systemNotice]);
+
+  useEffect(() => {
+    try {
+      const draft = {
+        weeklyView,
+        selectedDepartment,
+        inputMode,
+        cc,
+        startDate,
+        courses,
+        fileName,
+        pastedText,
+        importSummary,
+      };
+      localStorage.setItem(WEEKLY_DRAFT_KEY, JSON.stringify(draft));
+    } catch {}
+  }, [weeklyView, selectedDepartment, inputMode, cc, startDate, courses, fileName, pastedText, importSummary]);
 
   function persistArchive(records: ArchiveRecord[]) {
     setArchiveRecords(records);
@@ -1513,6 +1552,7 @@ export default function HomePage() {
   }
 
   function resetWeeklyForm() {
+    try { localStorage.removeItem(WEEKLY_DRAFT_KEY); } catch {}
     setSelectedDepartment(null);
     setCc('');
     setStartDate('');
