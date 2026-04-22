@@ -1,0 +1,78 @@
+{
+  "leadership_nomination_change": {
+    "title": "تعديل ترشيح المشرفين للدورات التدريبية",
+    "fixed_fields": [
+      "recipient",
+      "intro_text",
+      "closing_text"
+    ],
+    "variable_fields": [
+      "subject",
+      "reason_optional",
+      "notes_optional"
+    ],
+    "table_columns": [
+      "اسم الدورة",
+      "تاريخ البداية",
+      "تاريخ النهاية",
+      "اسم المكلف السابق",
+      "اسم البديل",
+      "ملاحظات"
+    ],
+    "recommended_inputs": [
+      "manual",
+      "excel",
+      "smart_paste_internal"
+    ]
+  },
+  "leadership_external_supervisors": {
+    "title": "اعتماد ترشيح مشرفين لدورات خارجية",
+    "fixed_fields": [
+      "recipient",
+      "intro_text",
+      "closing_text"
+    ],
+    "variable_fields": [
+      "subject",
+      "trip_note_optional",
+      "notes_optional"
+    ],
+    "table_columns": [
+      "اسم الدورة",
+      "المدينة أو الدولة",
+      "تاريخ البداية",
+      "تاريخ النهاية",
+      "اسم المشرف المرشح",
+      "صفة التكليف",
+      "ملاحظات"
+    ],
+    "recommended_inputs": [
+      "manual",
+      "excel",
+      "smart_paste_lms_plus_manual"
+    ]
+  },
+  "leadership_eid_duty": {
+    "title": "الموافقة على تكليف الموظفين لدوام العيد",
+    "fixed_fields": [
+      "recipient",
+      "intro_text",
+      "closing_text"
+    ],
+    "variable_fields": [
+      "subject",
+      "holiday_period",
+      "notes_optional"
+    ],
+    "table_columns": [
+      "اسم الموظف",
+      "الفترة",
+      "المهام",
+      "ملاحظات"
+    ],
+    "recommended_inputs": [
+      "manual",
+      "excel"
+    ]
+  }
+}

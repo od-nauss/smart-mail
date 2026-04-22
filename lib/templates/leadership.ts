@@ -1,72 +1,76 @@
 import { MessageTemplate } from '../types';
+
 export const leadershipTemplates: MessageTemplate[] = [
   {
-    id: 'leadership-nomination',
-    type: 'nomination-update',
+    id: 'leadership-nomination-change-pro',
+    type: 'leadership_nomination_change',
     group: 'leadership',
-    title: 'طلب تعديل ترشيح',
-    description: 'طلب تعديل بيانات المرشحين أو اعتماد التعديل',
+    title: 'تعديل ترشيح المشرفين',
+    description: 'اعتماد تعديل ترشيح المشرفين للدورات التدريبية',
     icon: 'edit',
     fields: [
-      { id: 'courseName', label: 'اسم الدورة', type: 'text', required: true },
-      { id: 'entityName', label: 'الجهة', type: 'text', required: true },
-      { id: 'changeDetails', label: 'تفاصيل التعديل', type: 'textarea', required: true },
+      { id: 'recipient', label: 'المرسل إليه', type: 'text', required: true, defaultValue: 'سعادة وكيل الجامعة للتدريب' },
+      { id: 'subjectLine', label: 'الموضوع', type: 'text', required: true, defaultValue: 'اعتماد تعديل ترشيح المشرفين للدورات التدريبية' },
+      { id: 'introNote', label: 'مقدمة إضافية', type: 'textarea', placeholder: 'أي توضيح مختصر قبل الجدول' },
+      { id: 'rows', label: 'الجدول', type: 'table', required: true, columns: ['اسم الدورة','تاريخ البداية','تاريخ النهاية','اسم المكلف السابق','اسم البديل','ملاحظات'] },
     ],
-    generateSubject: (data) => `طلب تعديل ترشيح - ${data.courseName}`,
-    generateBody: (data) => `السلام عليكم ورحمة الله وبركاته،
+    generateSubject: (data) => String(data.subjectLine || 'اعتماد تعديل ترشيح المشرفين للدورات التدريبية'),
+    generateBody: (data) => `سعادة وكيل الجامعة للتدريب سلمه الله
 
-نرفع لسعادتكم طلب تعديل الترشيح للدورة ${data.courseName} الخاصة بجهة ${data.entityName} وفق التفاصيل الآتية:
-${data.changeDetails}
+السلام عليكم ورحمة الله وبركاته
 
-نأمل التكرم بالاطلاع والتوجيه.`,
+${String(data.introNote || 'نأمل من سعادتكم اعتماد الأسماء الواردة في الجدول أدناه لتولي مهام الإشراف والتنفيذ للدورات المذكورة، وذلك وفق التعديل المقترح على الترشيحات السابقة.')}
+
+[rows]
+
+وتفضلوا بقبول خالص التحية والتقدير.`,
   },
-
   {
-    id: 'leadership-approval',
-    type: 'approval-request',
+    id: 'leadership-external-supervisors-pro',
+    type: 'leadership_external_supervisors',
     group: 'leadership',
-    title: 'طلب موافقة',
-    description: 'طلب موافقة على إجراء أو تنظيم أو تنفيذ',
-    icon: 'check',
+    title: 'اعتماد مشرفين لدورات خارجية',
+    description: 'رفع طلب اعتماد ترشيح مشرفين للدورات الخارجية',
+    icon: 'plane',
     fields: [
-      { id: 'requestTitle', label: 'عنوان الطلب', type: 'text', required: true },
-      { id: 'background', label: 'الخلفية', type: 'textarea', required: true },
-      { id: 'requestedAction', label: 'المطلوب اعتماده', type: 'textarea', required: true },
+      { id: 'recipient', label: 'المرسل إليه', type: 'text', required: true, defaultValue: 'سعادة وكيل الجامعة للتدريب' },
+      { id: 'subjectLine', label: 'الموضوع', type: 'text', required: true, defaultValue: 'اعتماد ترشيح مشرفين لدورات خارجية' },
+      { id: 'introNote', label: 'مقدمة إضافية', type: 'textarea', placeholder: 'أي توضيح مختصر قبل الجدول' },
+      { id: 'rows', label: 'الجدول', type: 'table', required: true, columns: ['اسم الدورة','المدينة أو الدولة','تاريخ البداية','تاريخ النهاية','اسم المشرف المرشح','صفة التكليف','ملاحظات'] },
     ],
-    generateSubject: (data) => `طلب موافقة - ${data.requestTitle}`,
-    generateBody: (data) => `السلام عليكم ورحمة الله وبركاته،
+    generateSubject: (data) => String(data.subjectLine || 'اعتماد ترشيح مشرفين لدورات خارجية'),
+    generateBody: (data) => `سعادة وكيل الجامعة للتدريب سلمه الله
 
-إشارة إلى الموضوع أعلاه، نرفع لسعادتكم خلفية الطلب كما يلي:
-${data.background}
+السلام عليكم ورحمة الله وبركاته
 
-والمطلوب:
-${data.requestedAction}
+${String(data.introNote || 'نأمل من سعادتكم التكرم بالموافقة على اعتماد ترشيح المشرفين الواردة أسماؤهم في الجدول أدناه للإشراف على الدورات الخارجية المشار إليها، وفق ما تقتضيه متطلبات التنفيذ والمتابعة.')}
 
-نأمل التكرم بالموافقة.`,
+[rows]
+
+وتفضلوا بقبول خالص التحية والتقدير.`,
   },
-
   {
-    id: 'leadership-accreditation',
-    type: 'accreditation-request',
+    id: 'leadership-eid-duty-pro',
+    type: 'leadership_eid_duty',
     group: 'leadership',
-    title: 'طلب اعتماد',
-    description: 'طلب اعتماد نهائي أو رسمي',
-    icon: 'stamp',
+    title: 'تكليف موظفي دوام العيد',
+    description: 'طلب الموافقة على تكليف موظفين خلال فترة العيد',
+    icon: 'calendar',
     fields: [
-      { id: 'subjectName', label: 'موضوع الاعتماد', type: 'text', required: true },
-      { id: 'justification', label: 'المبررات', type: 'textarea', required: true },
-      { id: 'impact', label: 'الأثر المتوقع', type: 'textarea', required: true },
+      { id: 'recipient', label: 'المرسل إليه', type: 'text', required: true, defaultValue: 'سعادة وكيل الجامعة للتدريب' },
+      { id: 'subjectLine', label: 'الموضوع', type: 'text', required: true, defaultValue: 'الموافقة على تكليف الموظفين لدوام العيد' },
+      { id: 'introNote', label: 'مقدمة إضافية', type: 'textarea', placeholder: 'أي توضيح مختصر قبل الجدول' },
+      { id: 'rows', label: 'الجدول', type: 'table', required: true, columns: ['اسم الموظف','الفترة','المهام','ملاحظات'] },
     ],
-    generateSubject: (data) => `طلب اعتماد - ${data.subjectName}`,
-    generateBody: (data) => `السلام عليكم ورحمة الله وبركاته،
+    generateSubject: (data) => String(data.subjectLine || 'الموافقة على تكليف الموظفين لدوام العيد'),
+    generateBody: (data) => `سعادة وكيل الجامعة للتدريب سلمه الله
 
-نأمل التكرم باعتماد ${data.subjectName}، وذلك استنادًا إلى المبررات التالية:
-${data.justification}
+السلام عليكم ورحمة الله وبركاته
 
-الأثر المتوقع:
-${data.impact}
+${String(data.introNote || 'نظرًا لوجود أعمال تشغيلية تتطلب المتابعة خلال فترة إجازة العيد، نأمل من سعادتكم التكرم بالموافقة على تكليف الموظفين الواردة أسماؤهم في الجدول أدناه للقيام بالمهام المحددة خلال الفترة المشار إليها.')}
 
-وتقبلوا وافر التقدير.`,
+[rows]
+
+وتفضلوا بقبول خالص التحية والتقدير.`,
   },
-
 ];
