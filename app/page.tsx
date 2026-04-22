@@ -288,9 +288,9 @@ const leadershipTemplates: LeadershipTemplate[] = [
     description: 'اعتماد تعديل الترشيحات السابقة للمشرفين على الدورات التدريبية.',
     icon: '📝',
     subject: 'اعتماد تعديل ترشيح المشرفين للدورات التدريبية',
-    columns: ['اسم الدورة', 'تاريخ البداية', 'تاريخ النهاية', 'اسم المكلف السابق', 'اسم البديل', 'ملاحظات'],
-    introPlaceholder: 'مثال: بالإشارة إلى الترشيحات السابقة للمشرفين، نأمل اعتماد التعديل الوارد أدناه.',
-    detailsPlaceholder: 'سبب التعديل أو أي إيضاح إضافي عند الحاجة.',
+    columns: ['اسم الدورة', 'المدينة أو الدولة', 'تاريخ البداية', 'تاريخ النهاية', 'اسم المكلف السابق', 'اسم البديل', 'ملاحظات'],
+    introPlaceholder: '',
+    detailsPlaceholder: '',
   },
   {
     key: 'external_supervisors',
@@ -300,8 +300,8 @@ const leadershipTemplates: LeadershipTemplate[] = [
     icon: '✈️',
     subject: 'اعتماد ترشيح مشرفين لدورات خارجية',
     columns: ['اسم الدورة', 'المدينة أو الدولة', 'تاريخ البداية', 'تاريخ النهاية', 'اسم المشرف المرشح', 'صفة التكليف', 'ملاحظات'],
-    introPlaceholder: 'مثال: نأمل من سعادتكم التكرم بالموافقة على اعتماد المشرفين المرشحين للدورات الخارجية الموضحة أدناه.',
-    detailsPlaceholder: 'أي توضيح متعلق بالسفر أو طبيعة المهمة أو الملاحظات الإدارية.',
+    introPlaceholder: '',
+    detailsPlaceholder: '',
   },
   {
     key: 'eid_duty',
@@ -311,13 +311,12 @@ const leadershipTemplates: LeadershipTemplate[] = [
     icon: '🕌',
     subject: 'الموافقة على تكليف الموظفين لدوام العيد',
     columns: ['اسم الموظف', 'الفترة', 'المهام', 'ملاحظات'],
-    introPlaceholder: 'مثال: نظرًا لوجود أعمال تشغيلية تتطلب المتابعة خلال فترة إجازة العيد، نأمل الموافقة على التكليفات أدناه.',
-    detailsPlaceholder: 'أي تفاصيل تشغيلية إضافية مثل الفترة أو نطاق العمل أو المبررات.',
+    introPlaceholder: '',
+    detailsPlaceholder: '',
   },
 ];
 
-
-const EID_EMPLOYEE_OPTIONS = [
+const EID_EMPLOYEES = [
   'نايف الشهراني',
   'خازم الأسمري',
   'عبدالمحسن العنزي',
@@ -335,18 +334,14 @@ const EID_TASK_OPTIONS = [
   'التحضير للدورات التدريبية القادمة الداخلية والخارجية والتأكد من جاهزية المتطلبات التشغيلية.',
   'ضمان استمرارية العمل والتغطية التشغيلية خلال فترة الإجازة.',
   'مراجعة المخزون في المستودعات وتنظيم المواد التدريبية والعمل على تطوير نظام إدارة المخزون.',
-  'متابعة الأعمال المرتبطة بمنصة LMS ومعالجة الملاحظات التشغيلية ذات العلاقة بالدورات القادمة.',
-  'التنسيق مع الجهات المساندة للتأكد من جاهزية القاعات والتجهيزات والخدمات المرتبطة بالتنفيذ.',
-  'استكمال الترتيبات التشغيلية للدورات الخارجية ومراجعة المتطلبات اللوجستية الخاصة بها.',
-  'مراجعة قوائم المتدربين والمدربين والتأكد من اكتمال البيانات اللازمة قبل التنفيذ.',
-  'متابعة الأعمال التطويرية الخاصة بمنصة المراسلات الذكية واستكمال ما يلزم لرفع كفاءة استخدامها.',
-  'مراجعة المواد التدريبية والأجهزة والعهد التشغيلية والتأكد من جاهزيتها للاستخدام.',
-  'متابعة طلبات الصيانة والنظافة والخدمات العامة ذات الصلة بالمقار التدريبية.',
-  'التنسيق للأعمال المرتبطة بتجربة WhatsApp API لخدمة التواصل مع المتدربين عند اعتماد المضي فيها.',
-  'إعداد القوائم التشغيلية ومراجعة خطط التغطية للأسبوع التالي بعد الإجازة.',
-  'متابعة الأعمال العاجلة التي تستلزم حضورًا تشغيليًا أو تنسيقًا مباشرًا خلال الإجازة.',
-  'مراجعة الترتيبات الخاصة بالمدربين الخارجيين والسكن والاستقبال والتوديع عند الحاجة.',
-  'استكمال الأعمال التطويرية المرتبطة بحوكمة التشغيل وتوثيق الإجراءات والنماذج.',
+  'متابعة أعمال منصة LMS والتأكد من جاهزية المسارات والاختبارات والمواد المساندة.',
+  'مراجعة الجداول التشغيلية للدورات القادمة والتأكد من سلامة توزيع الإشراف والتغطية.',
+  'التنسيق مع الإدارات المساندة بشأن الاحتياجات التشغيلية العاجلة خلال فترة الإجازة.',
+  'متابعة أعمال الصيانة والتجهيزات التقنية ذات العلاقة بالقاعات والمعامل التدريبية.',
+  'مراجعة القوائم التشغيلية للدورات الخارجية واستكمال ما يلزم من متطلبات تنظيمية.',
+  'متابعة الاستفسارات العاجلة للمتدربين والمدربين وضمان معالجتها بالتنسيق مع الجهات المعنية.',
+  'استكمال الأعمال التطويرية المرتبطة بمنصة المراسلات الذكية وتحسين نماذج العمل.',
+  'مراجعة السجلات التشغيلية والتأكد من اكتمال التوثيق اللازم للبرامج المنفذة.',
 ];
 
 const lmsLocationHints: Array<{ pattern: RegExp; value: string }> = [
@@ -1695,7 +1690,7 @@ function parseLeadershipPastedRows(text: string, templateKey: LeadershipTemplate
       if (index >= parts.length) return '';
       const rawValue = parts[index] || '';
       if (config.columns[index].includes('تاريخ')) return parseExcelDateValue(rawValue);
-      if ((config.columns[index].includes('المدينة') || config.columns[index].includes('الدولة')) && templateKey !== 'external_supervisors') return normalizeLocation(rawValue);
+      if (config.columns[index].includes('المدينة') || config.columns[index].includes('الدولة')) return rawValue;
       return rawValue;
     });
 
@@ -1719,7 +1714,7 @@ function parseLeadershipSheetAoa(aoa: unknown[][], templateKey: LeadershipTempla
     const values = Array.from({ length: config.columns.length }, (_, index) => {
       const rawValue = normalizeLeadershipCell(String(row[index] || ''));
       if (config.columns[index].includes('تاريخ')) return parseExcelDateValue(rawValue);
-      if ((config.columns[index].includes('المدينة') || config.columns[index].includes('الدولة')) && templateKey !== 'external_supervisors') return normalizeLocation(rawValue);
+      if (config.columns[index].includes('المدينة') || config.columns[index].includes('الدولة')) return rawValue;
       return rawValue;
     });
     return { id: `lead-excel-${rowIndex}-${Date.now()}`, values };
@@ -1767,36 +1762,57 @@ function getLeadershipIntro(template: LeadershipTemplate, rows: LeadershipRow[],
   const cityLabel = formatLeadershipCities(getLeadershipCities(rows));
   if (template.key === 'nomination_change') {
     return cityLabel
-      ? `إشارةً إلى الحاجة التشغيلية المتعلقة بتعديل ترشيح المشرفين على بعض الدورات التدريبية المقرر تنفيذها في ${cityLabel}، آمل التكرم بالاطلاع على الجدول أدناه المتضمن بيانات الترشيح السابق والبديل المقترح لاعتماد ما يلزم.`
-      : 'إشارةً إلى الحاجة التشغيلية المتعلقة بتعديل ترشيح المشرفين على بعض الدورات التدريبية، آمل التكرم بالاطلاع على الجدول أدناه المتضمن بيانات الترشيح السابق والبديل المقترح لاعتماد ما يلزم.';
+      ? `إشارة إلى الترشيحات المعتمدة للمشرفين على الدورات التدريبية، وبناءً على المستجدات التشغيلية المرتبطة بتنفيذ البرامج في ${cityLabel}، نأمل التكرم بالموافقة على تعديل الترشيح وفقًا لما هو موضح في الجدول أدناه.`
+      : 'إشارة إلى الترشيحات المعتمدة للمشرفين على الدورات التدريبية، وبناءً على المستجدات التشغيلية المرتبطة بالتنفيذ، نأمل التكرم بالموافقة على تعديل الترشيح وفقًا لما هو موضح في الجدول أدناه.';
   }
   if (template.key === 'external_supervisors') {
     return cityLabel
-      ? `إشارةً إلى الدورات الخارجية المقرر تنفيذها في ${cityLabel} وما تتطلبه من إشراف ميداني وتنظيمي، آمل التكرم بالاطلاع على الجدول أدناه المتضمن أسماء المشرفين المرشحين لاعتماد ما يلزم.`
-      : 'إشارةً إلى الدورات الخارجية وما تتطلبه من إشراف ميداني وتنظيمي، آمل التكرم بالاطلاع على الجدول أدناه المتضمن أسماء المشرفين المرشحين لاعتماد ما يلزم.';
+      ? `نظرًا لارتباط عدد من الدورات الخارجية المزمع تنفيذها في ${cityLabel} بمهام إشرافية وتنظيمية تستلزم اعتماد الأسماء المرشحة، نأمل التكرم بالموافقة على اعتماد المشرفين الموضحة أسماؤهم في الجدول أدناه.`
+      : 'نظرًا لارتباط عدد من الدورات الخارجية بمهام إشرافية وتنظيمية تستلزم اعتماد الأسماء المرشحة، نأمل التكرم بالموافقة على اعتماد المشرفين الموضحة أسماؤهم في الجدول أدناه.';
   }
-  return customIntro.trim() || 'نظرًا لوجود عدد من الأعمال التشغيلية التي تتطلب المتابعة خلال فترة إجازة العيد، آمل التكرم بالموافقة على تكليف كل من ترد أسماؤهم أدناه، والاطلاع على المهام الموضحة بعد ذلك.';
+  return 'نظرًا لوجود عدد من الأعمال التشغيلية التي تتطلب المتابعة خلال فترة إجازة العيد، آمل التكرم بالموافقة على تكليف كل من ترد أسماؤهم أدناه، وذلك للقيام بالمهام التالية:';
 }
 
-function buildEidNamesHtml(rows: LeadershipRow[]) {
+function buildEidListHtml(rows: LeadershipRow[]) {
   const items = rows.filter((row) => row.values.some((value) => String(value || '').trim())).map((row) => {
-    const name = row.values[0] || '-';
-    return `<li style="margin:0 0 8px 0;">${escapeHtml(name)}</li>`;
+    const [name, period, task, notes] = row.values;
+    const meta = [period ? `الفترة: ${period}` : '', notes ? `ملاحظات: ${notes}` : ''].filter(Boolean).join(' | ');
+    return `<li style="margin:0 0 10px 0;"><strong>${escapeHtml(name || '-')}</strong>${task ? `<div style="margin-top:4px;">${escapeHtml(task)}</div>` : ''}${meta ? `<div style="margin-top:4px;color:#6b7280;font-size:13px;">${escapeHtml(meta)}</div>` : ''}</li>`;
   }).join('');
-  return `<ol style="margin:14px 0;padding:0 18px 0 0;">${items}</ol>`;
+  return `<ul style="margin:14px 0;padding:0 18px 0 0;">${items}</ul>`;
 }
 
-function buildEidNamesText(rows: LeadershipRow[]) {
-  return rows.filter((row) => row.values.some((value) => String(value || '').trim())).map((row, index) => `${index + 1}. ${row.values[0] || '-'}`).join('\n');
+function buildEidListText(rows: LeadershipRow[]) {
+  return rows.filter((row) => row.values.some((value) => String(value || '').trim())).map((row) => {
+    const [name, period, task, notes] = row.values;
+    const lines = [`• ${name || '-'}`];
+    if (task) lines.push(`  - ${task}`);
+    if (period) lines.push(`  - الفترة: ${period}`);
+    if (notes) lines.push(`  - ملاحظات: ${notes}`);
+    return lines.join('\n');
+
+  }).join('\n');
+
 }
 
-function buildEidTasksHtml(details: string) {
-  const items = details.split('\n').map((item) => item.trim()).filter(Boolean).map((item) => `<li style="margin:0 0 8px 0;">${escapeHtml(item)}</li>`).join('');
-  return items ? `<ul style="margin:14px 0;padding:0 18px 0 0;">${items}</ul>` : '';
+function buildEidRowsFromSelections(employees: string[], tasks: string[], holidayType: string) {
+  const taskText = tasks.join('\n');
+  return employees.map((name, index) => ({
+    id: `eid-${index}-${name}`,
+    values: [name, `إجازة عيد ${holidayType}`, taskText, ''],
+  }));
 }
 
-function buildEidTasksText(details: string) {
-  return details.split('\n').map((item) => item.trim()).filter(Boolean).map((item) => `• ${item}`).join('\n');
+function polishTaskLines(value: string) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const cleaned = line.replace(/[.،؛\-\s]+$/g, '');
+      return `${cleaned}.`;
+    })
+    .join('\n');
 }
 
 function generateLeadershipDraft(params: {
@@ -1814,38 +1830,15 @@ function generateLeadershipDraft(params: {
   const closingText = `آمل التكرم بالاطلاع والتوجيه بما ترونه مناسبًا.
 
 وتفضلوا بقبول خالص التحية والتقدير.`;
-
-  let htmlBody = '';
-  let textBody = '';
-
-  if (params.template.key === 'eid_duty') {
-    const namesHtml = buildEidNamesHtml(rows);
-    const namesText = buildEidNamesText(rows);
-    const tasksHtml = buildEidTasksHtml(details);
-    const tasksText = buildEidTasksText(details);
-    htmlBody = `
-      <p style="margin:0 0 10px 0;">الأسماء المرشحة للتكليف:</p>
-      ${namesHtml}
-      ${tasksHtml ? `<p style="margin:12px 0 8px 0;">وذلك للعمل خلال الإجازة للقيام بالمهام التالية:</p>${tasksHtml}` : ''}
-    `.trim();
-    textBody = [
-      'الأسماء المرشحة للتكليف:',
-      namesText,
-      tasksText ? `
-وذلك للعمل خلال الإجازة للقيام بالمهام التالية:
-${tasksText}` : '',
-    ].filter(Boolean).join('\n');
-  } else {
-    htmlBody = buildLeadershipTableHtml(params.template.columns, rows);
-    textBody = buildLeadershipTableText(params.template.columns, rows);
-  }
-
+  const htmlBody = params.template.key === 'eid_duty' ? buildEidListHtml(rows) : buildLeadershipTableHtml(params.template.columns, rows);
+  const textBody = params.template.key === 'eid_duty' ? buildEidListText(rows) : buildLeadershipTableText(params.template.columns, rows);
   const html = `
     <div style="font-family:Cairo,Arial,sans-serif;line-height:1.95;color:#1f2937;text-align:right;direction:rtl;">
       <p style="margin:0 0 8px 0;">${escapeHtml(recipient)} سلمه الله</p>
       <p style="margin:0 0 16px 0;">السلام عليكم ورحمة الله وبركاته،</p>
       <p style="margin:0 0 12px 0;">${escapeHtml(introText)}</p>
-      ${htmlBody}
+      ${params.template.key === 'eid_duty' ? `<p style="margin:0 0 12px 0;">وذلك للعمل خلال الإجازة للقيام بالمهام التالية:</p>${htmlBody}` : htmlBody}
+      ${details && params.template.key === 'eid_duty' ? `<p style="margin:12px 0 0 0;">${escapeHtml(details)}</p>` : ''}
       <p style="margin:14px 0 0 0;white-space:pre-line;">${escapeHtml(closingText)}</p>
     </div>
   `.trim();
@@ -1857,12 +1850,16 @@ ${tasksText}` : '',
     '',
     introText,
     '',
-    textBody,
+    params.template.key === 'eid_duty' ? `وذلك للعمل خلال الإجازة للقيام بالمهام التالية:
+${textBody}` : textBody,
+    details && params.template.key === 'eid_duty' ? `
+${details}` : '',
     '',
     'آمل التكرم بالاطلاع والتوجيه بما ترونه مناسبًا.',
     '',
     'وتفضلوا بقبول خالص التحية والتقدير.',
-  ].filter(Boolean).join('\n');
+].filter(Boolean).join('\n');
+
 
   return { subject, plainText, html };
 }
@@ -1897,9 +1894,12 @@ export default function HomePage() {
   const [leadershipFileName, setLeadershipFileName] = useState('');
   const [leadershipDraft, setLeadershipDraft] = useState<{ subject: string; plainText: string; html: string } | null>(null);
   const [leadershipFileInputKey, setLeadershipFileInputKey] = useState(0);
+  const [leadershipApprovalAttachments, setLeadershipApprovalAttachments] = useState<UploadedAttachment[]>([]);
+  const [leadershipAttachmentInputKey, setLeadershipAttachmentInputKey] = useState(0);
   const [eidHolidayType, setEidHolidayType] = useState<'الفطر المبارك' | 'الأضحى المبارك'>('الفطر المبارك');
   const [eidSelectedEmployees, setEidSelectedEmployees] = useState<string[]>([]);
   const [eidSelectedTasks, setEidSelectedTasks] = useState<string[]>([]);
+  const [eidCustomTasks, setEidCustomTasks] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const [courseForm, setCourseForm] = useState<CourseRecord>({
@@ -1947,13 +1947,6 @@ export default function HomePage() {
   const weekLabel = useMemo(() => getWeekLabelFromDate(startDate), [startDate]);
   const formattedStartDate = useMemo(() => getFormattedStartDate(startDate), [startDate]);
   const selectedLeadershipTemplate = useMemo(() => getLeadershipTemplateConfig(leadershipTemplate), [leadershipTemplate]);
-  const leadershipRowsForSubject = useMemo(() => {
-    if (leadershipTemplate === 'eid_duty') {
-      return eidSelectedEmployees.map((name, index) => ({ id: `eid-${index}`, values: [name] } as LeadershipRow));
-    }
-    return leadershipRows.filter((row) => row.values.some((value) => String(value || '').trim()));
-  }, [leadershipTemplate, leadershipRows, eidSelectedEmployees]);
-  const leadershipAutoSubject = useMemo(() => getLeadershipSubject(selectedLeadershipTemplate, leadershipRowsForSubject), [selectedLeadershipTemplate, leadershipRowsForSubject]);
 
   useEffect(() => {
     if (!courses.length) return;
@@ -1982,9 +1975,6 @@ export default function HomePage() {
     setLeadershipPastedText('');
     setLeadershipFileName('');
     setLeadershipDraft(null);
-    setEidSelectedEmployees([]);
-    setEidSelectedTasks([]);
-    setEidHolidayType('الفطر المبارك');
   }, [leadershipTemplate, selectedLeadershipTemplate.columns.length]);
 
   useEffect(() => {
@@ -2179,12 +2169,15 @@ ${draft.plainText}`;
     setLeadershipPastedText('');
     setLeadershipFileName('');
     setLeadershipDraft(null);
-    setEidSelectedEmployees([]);
-    setEidSelectedTasks([]);
-    setEidHolidayType('الفطر المبارك');
     setLeadershipRows([createLeadershipRow(selectedLeadershipTemplate.columns.length)]);
     setLeadershipInputMode('manual');
     setLeadershipFileInputKey((prev) => prev + 1);
+    setLeadershipApprovalAttachments([]);
+    setLeadershipAttachmentInputKey((prev) => prev + 1);
+    setEidHolidayType('الفطر المبارك');
+    setEidSelectedEmployees([]);
+    setEidSelectedTasks([]);
+    setEidCustomTasks('');
   }
 
   function updateLeadershipCell(rowId: string, columnIndex: number, value: string) {
@@ -2234,28 +2227,19 @@ ${draft.plainText}`;
   }
 
   function buildLeadershipDraft() {
-    let rows = leadershipRows.filter((row) => row.values.some((value) => String(value || '').trim()));
-    let details = leadershipDetails;
-    let intro = leadershipIntro;
-
-    if (leadershipTemplate === 'eid_duty') {
-      rows = eidSelectedEmployees.map((name, index) => ({
-        id: `eid-${index}`,
-        values: [name, '', '', ''],
-      }));
-      details = eidSelectedTasks.join('\n');
-      intro = `نظرًا لوجود عدد من الأعمال التشغيلية التي تتطلب المتابعة خلال فترة إجازة عيد ${eidHolidayType}، آمل التكرم بالموافقة على تكليف كل من:`;
-    }
-
+    const computedEidTasks = [...eidSelectedTasks, ...polishTaskLines(eidCustomTasks).split(/\r?\n/).filter(Boolean)];
+    const rows = leadershipTemplate === 'eid_duty'
+      ? buildEidRowsFromSelections(eidSelectedEmployees, computedEidTasks, eidHolidayType)
+      : leadershipRows.filter((row) => row.values.some((value) => String(value || '').trim()));
     if (!rows.length) {
-      setSystemNotice(leadershipTemplate === 'eid_duty' ? 'اختر اسمًا واحدًا على الأقل قبل صياغة الرسالة.' : 'أدخل صفًا واحدًا على الأقل قبل صياغة الرسالة.');
+      setSystemNotice(leadershipTemplate === 'eid_duty' ? 'اختر اسمًا واحدًا على الأقل ومهمة واحدة على الأقل.' : 'أدخل صفًا واحدًا على الأقل قبل صياغة الرسالة.');
       return null;
     }
     const draft = generateLeadershipDraft({
       recipient: leadershipRecipient,
       template: selectedLeadershipTemplate,
-      intro,
-      details,
+      intro: leadershipIntro,
+      details: leadershipDetails,
       rows,
     });
     setLeadershipDraft(draft);
@@ -2266,8 +2250,18 @@ ${draft.plainText}`;
     const draft = leadershipDraft || buildLeadershipDraft();
     if (!draft) return;
     try {
-      await navigator.clipboard.writeText(`الموضوع: ${draft.subject}\n\n${draft.plainText}`);
-      setSystemNotice('تم نسخ نص مراسلة الإدارة العليا.');
+      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+        const htmlBlob = new Blob([buildDraftHtmlDocument(draft.subject, draft.html)], { type: 'text/html' });
+        const textBlob = new Blob([`الموضوع: ${draft.subject}
+
+${draft.plainText}`], { type: 'text/plain' });
+        await navigator.clipboard.write([new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })]);
+      } else {
+        await navigator.clipboard.writeText(`الموضوع: ${draft.subject}
+
+${draft.plainText}`);
+      }
+      setSystemNotice('تم نسخ مراسلة الإدارة العليا بصيغة منسقة.');
     } catch {
       setSystemNotice('تعذر نسخ النص حاليًا.');
     }
@@ -2277,7 +2271,8 @@ ${draft.plainText}`;
     const draft = leadershipDraft || buildLeadershipDraft();
     if (!draft) return;
     try {
-      const eml = await buildOutlookDraftEml(LEADERSHIP_TO_EMAIL, LEADERSHIP_CC_EMAIL, draft.subject, draft.html, []);
+      const draftAttachments = leadershipTemplate === 'nomination_change' ? leadershipApprovalAttachments : [];
+      const eml = await buildOutlookDraftEml(LEADERSHIP_TO_EMAIL, LEADERSHIP_CC_EMAIL, draft.subject, draft.html, draftAttachments);
       const blob = new Blob([eml], { type: 'message/rfc822;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
@@ -2305,6 +2300,38 @@ ${draft.plainText}`;
     link.remove();
     URL.revokeObjectURL(url);
     setSystemNotice('تم تنزيل نموذج الجدول لهذا النوع من المراسلات.');
+  }
+
+  async function handleLeadershipAttachmentsChange(files: FileList | null) {
+    if (!files || !files.length) return;
+    try {
+      const uploaded = await Promise.all(
+        Array.from(files).map(async (file) => ({
+          id: `lead-att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name: file.name,
+          type: file.type || 'application/octet-stream',
+          size: file.size,
+          data: await readFileAsBase64(file),
+        })),
+      );
+      setLeadershipApprovalAttachments((prev) => [...prev, ...uploaded]);
+      setLeadershipAttachmentInputKey((prev) => prev + 1);
+      setSystemNotice(`تمت إضافة ${uploaded.length} مرفق/مرفقات لمراسلة الإدارة العليا.`);
+    } catch {
+      setSystemNotice('تعذر قراءة المرفقات الحالية.');
+    }
+  }
+
+  function removeLeadershipAttachment(id: string) {
+    setLeadershipApprovalAttachments((prev) => prev.filter((item) => item.id !== id));
+  }
+
+  function toggleEidEmployee(name: string) {
+    setEidSelectedEmployees((prev) => prev.includes(name) ? prev.filter((item) => item !== name) : [...prev, name]);
+  }
+
+  function toggleEidTask(task: string) {
+    setEidSelectedTasks((prev) => prev.includes(task) ? prev.filter((item) => item !== task) : [...prev, task]);
   }
 
   function resetCourseForm() {
@@ -3050,19 +3077,13 @@ ${draft.plainText}`;
           </label>
           <label className="block">
             <div className="mb-2 text-sm font-semibold text-[#016564]">الموضوع</div>
-            <input value={leadershipAutoSubject} readOnly className="w-full rounded-2xl border border-[#d6d7d4] bg-[#f8f9f9] px-4 py-3 text-sm text-[#5a5a5a]" />
+            <input value={getLeadershipSubject(selectedLeadershipTemplate, leadershipTemplate === 'eid_duty' ? buildEidRowsFromSelections(eidSelectedEmployees, [...eidSelectedTasks, ...polishTaskLines(eidCustomTasks).split(/\r?\n/).filter(Boolean)], eidHolidayType) : leadershipRows)} readOnly className="w-full rounded-2xl border border-[#d6d7d4] bg-[#f8f9f9] px-4 py-3 text-sm text-[#5a5a5a]" />
           </label>
         </div>
 
-        <div className="mb-4 rounded-2xl border border-[#e7ecec] bg-[#fcfdfd] px-4 py-3 text-sm leading-8 text-[#5a5a5a]">
-          {leadershipTemplate === 'nomination_change' && 'سيُنشأ تمهيد رسمي تلقائيًا بصياغة مهنية ويختتم بالإحالة إلى الجدول أدناه.'}
-          {leadershipTemplate === 'external_supervisors' && 'سيُنشأ تمهيد رسمي تلقائيًا بصياغة مهنية ويختتم بالإحالة إلى الجدول أدناه.'}
-          {leadershipTemplate === 'eid_duty' && 'سيُنشأ تمهيد رسمي تلقائيًا بصياغة مهنية بحسب نوع إجازة العيد والأسماء والمهام المختارة.'}
-        </div>
 
-        {leadershipTemplate !== 'eid_duty' ? (
         <div className="mb-4 flex flex-wrap gap-3">
-          {(['manual','paste','excel'] as InputMode[]).map((mode) => (
+          {((leadershipTemplate === 'eid_duty' ? (['manual'] as InputMode[]) : (['manual','paste','excel'] as InputMode[]))).map((mode) => (
             <button
               key={mode}
               type="button"
@@ -3074,31 +3095,55 @@ ${draft.plainText}`;
           ))}
           <button type="button" onClick={downloadLeadershipTemplateCsv} className="rounded-2xl border border-[#d6d7d4] bg-white px-4 py-2 text-sm font-semibold text-[#016564]">تنزيل النموذج</button>
         </div>
+
+        {leadershipTemplate === 'nomination_change' ? (
+          <div className="mb-5 rounded-3xl border border-[#e1e5e5] bg-[#fcfdfd] p-4">
+            <div className="mb-2 text-sm font-semibold text-[#016564]">مرفق موافقة معالي الرئيس</div>
+            <input key={leadershipAttachmentInputKey} type="file" multiple onChange={(e) => void handleLeadershipAttachmentsChange(e.target.files)} className="block w-full text-sm" />
+            {leadershipApprovalAttachments.length ? <div className="mt-3 flex flex-wrap gap-2">{leadershipApprovalAttachments.map((item) => <button key={item.id} type="button" onClick={() => removeLeadershipAttachment(item.id)} className="rounded-full border border-[#d6d7d4] bg-white px-3 py-1 text-xs text-[#7c1e3e]">حذف {item.name}</button>)}</div> : <div className="mt-2 text-xs text-[#8c6968]">يمكن إرفاق موافقة معالي الرئيس ضمن ملف EML.</div>}
+          </div>
         ) : null}
 
         {leadershipTemplate === 'eid_duty' ? (
-          <div className="mb-5 grid grid-cols-1 gap-4">
-            <label className="block">
+          <div className="mb-5 space-y-4 rounded-3xl border border-[#e1e5e5] bg-[#fcfdfd] p-4">
+            <div>
               <div className="mb-2 text-sm font-semibold text-[#016564]">نوع الإجازة</div>
-              <select value={eidHolidayType} onChange={(e) => setEidHolidayType(e.target.value as 'الفطر المبارك' | 'الأضحى المبارك')} className="w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]">
-                <option value="الفطر المبارك">الفطر المبارك</option>
-                <option value="الأضحى المبارك">الأضحى المبارك</option>
-              </select>
-            </label>
-            <label className="block">
+              <div className="flex flex-wrap gap-3">
+                {(['الفطر المبارك','الأضحى المبارك'] as const).map((holiday) => (
+                  <label key={holiday} className="inline-flex items-center gap-2 rounded-2xl border border-[#d6d7d4] bg-white px-4 py-2 text-sm">
+                    <input type="radio" checked={eidHolidayType === holiday} onChange={() => setEidHolidayType(holiday)} />
+                    {holiday}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
               <div className="mb-2 text-sm font-semibold text-[#016564]">الأسماء المرشحة للتكليف</div>
-              <select multiple value={eidSelectedEmployees} onChange={(e) => setEidSelectedEmployees(Array.from(e.target.selectedOptions).map((option) => option.value))} className="min-h-[220px] w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]">
-                {EID_EMPLOYEE_OPTIONS.map((name) => <option key={name} value={name}>{name}</option>)}
-              </select>
-              <div className="mt-2 text-xs text-[#8c6968]">يمكن اختيار أكثر من اسم باستخدام Ctrl أو Command.</div>
-            </label>
-            <label className="block">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {EID_EMPLOYEES.map((name) => (
+                  <label key={name} className="inline-flex items-center gap-2 rounded-2xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm">
+                    <input type="checkbox" checked={eidSelectedEmployees.includes(name)} onChange={() => toggleEidEmployee(name)} />
+                    {name}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
               <div className="mb-2 text-sm font-semibold text-[#016564]">المهام التشغيلية</div>
-              <select multiple value={eidSelectedTasks} onChange={(e) => setEidSelectedTasks(Array.from(e.target.selectedOptions).map((option) => option.value))} className="min-h-[260px] w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]">
-                {EID_TASK_OPTIONS.map((task) => <option key={task} value={task}>{task}</option>)}
-              </select>
-              <div className="mt-2 text-xs text-[#8c6968]">سيتم إدراج المهام المختارة بصياغة مرتبة داخل المعاينة وملف EML.</div>
-            </label>
+              <div className="grid grid-cols-1 gap-2">
+                {EID_TASK_OPTIONS.map((task) => (
+                  <label key={task} className="inline-flex items-start gap-2 rounded-2xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm leading-7">
+                    <input type="checkbox" checked={eidSelectedTasks.includes(task)} onChange={() => toggleEidTask(task)} className="mt-1" />
+                    {task}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="mb-2 text-sm font-semibold text-[#016564]">مهام إضافية أو صياغة مخصصة</div>
+              <textarea value={eidCustomTasks} onChange={(e) => setEidCustomTasks(e.target.value)} rows={5} className="w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]" placeholder="اكتب كل مهمة في سطر مستقل، وسيتم تحسين الصياغة تلقائيًا عند توليد الرسالة." />
+              <div className="mt-2 text-xs text-[#8c6968]">يمكنك إدخال مهام إضافية وسيتم دمجها مع المهام المختارة في النص النهائي.</div>
+            </div>
           </div>
         ) : null}
 
@@ -3120,7 +3165,13 @@ ${draft.plainText}`;
           </div>
         ) : null}
 
-        {leadershipTemplate !== 'eid_duty' ? (
+        {leadershipTemplate === 'eid_duty' ? (
+          <div className="rounded-3xl border border-[#e1e5e5] bg-[#fcfdfd] p-4 text-sm leading-8 text-[#2b3a3a]">
+            <div className="font-semibold text-[#016564]">معاينة الأسماء والمهام المختارة</div>
+            <div className="mt-3">عدد الأسماء المحددة: {eidSelectedEmployees.length || 0}</div>
+            <div className="mt-1">عدد المهام المحددة: {eidSelectedTasks.length + polishTaskLines(eidCustomTasks).split(/\r?\n/).filter(Boolean).length}</div>
+          </div>
+        ) : (
         <div className="overflow-x-auto rounded-3xl border border-[#e1e5e5]">
           <table className="min-w-full border-collapse text-sm">
             <thead>
@@ -3161,10 +3212,10 @@ ${draft.plainText}`;
             </tbody>
           </table>
         </div>
-        ) : null}
+        )}
 
         <div className="mt-4 flex flex-wrap gap-3">
-          <button type="button" onClick={addLeadershipRow} className="rounded-2xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">إضافة صف</button>
+          {leadershipTemplate !== 'eid_duty' ? <button type="button" onClick={addLeadershipRow} className="rounded-2xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">إضافة صف</button> : null}
           <button type="button" onClick={() => buildLeadershipDraft()} className="rounded-2xl bg-[#016564] px-4 py-3 text-sm font-semibold text-white">صياغة الرسالة</button>
           <button type="button" onClick={copyLeadershipText} className="rounded-2xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">نسخ النص</button>
           <button type="button" onClick={downloadLeadershipEml} className="rounded-2xl border border-[#d6d7d4] bg-white px-4 py-3 text-sm font-semibold text-[#016564]">تنزيل EML</button>
