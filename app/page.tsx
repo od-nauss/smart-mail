@@ -1505,7 +1505,7 @@ export default function HomePage() {
       const savedDraft = localStorage.getItem(WEEKLY_DRAFT_KEY);
       if (!savedDraft) return;
       const draft = JSON.parse(savedDraft);
-      if (draft.weeklyView) setWeeklyView(draft.weeklyView);
+      setWeeklyView('home');
       if (draft.selectedDepartment !== undefined) setSelectedDepartment(draft.selectedDepartment);
       if (draft.inputMode) setInputMode(draft.inputMode);
       if (draft.cc !== undefined) setCc(draft.cc);
