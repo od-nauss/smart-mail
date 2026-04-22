@@ -114,6 +114,8 @@ type LeadershipTemplate = {
 const ARCHIVE_KEY = 'smart-mail-weekly-archive-v2';
 const WEEKLY_DRAFT_KEY = 'smart-mail-weekly-draft-v1';
 const ARCHIVE_PASSWORD = 'Nn@123123';
+const LEADERSHIP_TO_EMAIL = 'T-AAlmargan@nauss.edu.sa';
+const LEADERSHIP_CC_EMAIL = 'AOshen@nauss.edu.sa';
 
 const homeModules: Array<{
   key: HomeModuleKey;
@@ -1645,7 +1647,7 @@ function parseLeadershipPastedRows(text: string, templateKey: LeadershipTemplate
     if (templateKey === 'external_supervisors' && parts.length >= 6) {
       const values = [
         parts[0] || '',
-        normalizeLocation(parts[1] || parts[6] || ''),
+        parts[1] || '',
         parseExcelDateValue(parts[2] || ''),
         parseExcelDateValue(parts[3] || ''),
         parts[5] || '',
@@ -1660,7 +1662,7 @@ function parseLeadershipPastedRows(text: string, templateKey: LeadershipTemplate
       if (index >= parts.length) return '';
       const rawValue = parts[index] || '';
       if (config.columns[index].includes('تاريخ')) return parseExcelDateValue(rawValue);
-      if (config.columns[index].includes('المدينة') || config.columns[index].includes('الدولة')) return normalizeLocation(rawValue);
+      if ((config.columns[index].includes('المدينة') || config.columns[index].includes('الدولة')) && templateKey !== 'external_supervisors') return normalizeLocation(rawValue);
       return rawValue;
     });
 
@@ -1684,7 +1686,7 @@ function parseLeadershipSheetAoa(aoa: unknown[][], templateKey: LeadershipTempla
     const values = Array.from({ length: config.columns.length }, (_, index) => {
       const rawValue = normalizeLeadershipCell(String(row[index] || ''));
       if (config.columns[index].includes('تاريخ')) return parseExcelDateValue(rawValue);
-      if (config.columns[index].includes('المدينة') || config.columns[index].includes('الدولة')) return normalizeLocation(rawValue);
+      if ((config.columns[index].includes('المدينة') || config.columns[index].includes('الدولة')) && templateKey !== 'external_supervisors') return normalizeLocation(rawValue);
       return rawValue;
     });
     return { id: `lead-excel-${rowIndex}-${Date.now()}`, values };
@@ -1704,6 +1706,67 @@ function buildLeadershipTableText(columns: string[], rows: LeadershipRow[]) {
   return [header, divider, ...lines].join('\n');
 }
 
+
+function getLeadershipCities(rows: LeadershipRow[]) {
+  return Array.from(new Set(rows
+    .map((row) => String(row.values[1] || '').trim())
+    .filter(Boolean)
+    .filter((value) => value !== 'خارجي' && value !== 'داخلي')));
+}
+
+function formatLeadershipCities(cities: string[]) {
+  if (!cities.length) return '';
+  if (cities.length === 1) return cities[0];
+  if (cities.length === 2) return `${cities[0]} و${cities[1]}`;
+  return `${cities.slice(0, -1).join('، ')}، و${cities[cities.length - 1]}`;
+}
+
+function getLeadershipSubject(template: LeadershipTemplate, rows: LeadershipRow[]) {
+  const cityLabel = formatLeadershipCities(getLeadershipCities(rows));
+  if (!cityLabel) return template.subject;
+  if (template.key === 'nomination_change') return `اعتماد تعديل ترشيح المشرفين للدورات التدريبية في ${cityLabel}`;
+  if (template.key === 'external_supervisors') return `اعتماد ترشيح مشرفين لدورات خارجية في ${cityLabel}`;
+  return template.subject;
+}
+
+function getLeadershipIntro(template: LeadershipTemplate, rows: LeadershipRow[], customIntro: string) {
+  if (customIntro.trim()) return customIntro.trim();
+  const cityLabel = formatLeadershipCities(getLeadershipCities(rows));
+  if (template.key === 'nomination_change') {
+    return cityLabel
+      ? `إشارة إلى الترشيحات المعتمدة للمشرفين على الدورات التدريبية، وبناءً على المستجدات التشغيلية المرتبطة بتنفيذ البرامج في ${cityLabel}، نأمل التكرم بالموافقة على تعديل الترشيح وفقًا لما هو موضح في الجدول أدناه.`
+      : 'إشارة إلى الترشيحات المعتمدة للمشرفين على الدورات التدريبية، وبناءً على المستجدات التشغيلية المرتبطة بالتنفيذ، نأمل التكرم بالموافقة على تعديل الترشيح وفقًا لما هو موضح في الجدول أدناه.';
+  }
+  if (template.key === 'external_supervisors') {
+    return cityLabel
+      ? `نظرًا لارتباط عدد من الدورات الخارجية المزمع تنفيذها في ${cityLabel} بمهام إشرافية وتنظيمية تستلزم اعتماد الأسماء المرشحة، نأمل التكرم بالموافقة على اعتماد المشرفين الموضحة أسماؤهم في الجدول أدناه.`
+      : 'نظرًا لارتباط عدد من الدورات الخارجية بمهام إشرافية وتنظيمية تستلزم اعتماد الأسماء المرشحة، نأمل التكرم بالموافقة على اعتماد المشرفين الموضحة أسماؤهم في الجدول أدناه.';
+  }
+  return 'نظرًا لوجود عدد من الأعمال التشغيلية التي تتطلب المتابعة خلال فترة إجازة العيد، آمل التكرم بالموافقة على تكليف كل من ترد أسماؤهم أدناه، وذلك للقيام بالمهام التشغيلية المشار إليها.';
+}
+
+function buildEidListHtml(rows: LeadershipRow[]) {
+  const items = rows.filter((row) => row.values.some((value) => String(value || '').trim())).map((row) => {
+    const [name, period, task, notes] = row.values;
+    const meta = [period ? `الفترة: ${period}` : '', notes ? `ملاحظات: ${notes}` : ''].filter(Boolean).join(' | ');
+    return `<li style="margin:0 0 10px 0;"><strong>${escapeHtml(name || '-')}</strong>${task ? `<div style="margin-top:4px;">${escapeHtml(task)}</div>` : ''}${meta ? `<div style="margin-top:4px;color:#6b7280;font-size:13px;">${escapeHtml(meta)}</div>` : ''}</li>`;
+  }).join('');
+  return `<ul style="margin:14px 0;padding:0 18px 0 0;">${items}</ul>`;
+}
+
+function buildEidListText(rows: LeadershipRow[]) {
+  return rows.filter((row) => row.values.some((value) => String(value || '').trim())).map((row) => {
+    const [name, period, task, notes] = row.values;
+    const lines = [`• ${name || '-'}`];
+    if (task) lines.push(`  - ${task}`);
+    if (period) lines.push(`  - الفترة: ${period}`);
+    if (notes) lines.push(`  - ملاحظات: ${notes}`);
+    return lines.join('\n');
+
+  }).join('\n');
+
+}
+
 function generateLeadershipDraft(params: {
   recipient: string;
   template: LeadershipTemplate;
@@ -1712,19 +1775,23 @@ function generateLeadershipDraft(params: {
   rows: LeadershipRow[];
 }) {
   const recipient = params.recipient.trim() || 'سعادة وكيل الجامعة للتدريب';
-  const intro = params.intro.trim();
   const details = params.details.trim();
   const rows = params.rows.filter((row) => row.values.some((value) => String(value || '').trim()));
-  const introText = intro || params.template.introPlaceholder;
-  const detailsBlock = details ? `<p style="margin:0 0 12px 0;">${escapeHtml(details)}</p>` : '';
+  const subject = getLeadershipSubject(params.template, rows);
+  const introText = getLeadershipIntro(params.template, rows, params.intro);
+  const closingText = `آمل التكرم بالاطلاع والتوجيه بما ترونه مناسبًا.
+
+وتفضلوا بقبول خالص التحية والتقدير.`;
+  const htmlBody = params.template.key === 'eid_duty' ? buildEidListHtml(rows) : buildLeadershipTableHtml(params.template.columns, rows);
+  const textBody = params.template.key === 'eid_duty' ? buildEidListText(rows) : buildLeadershipTableText(params.template.columns, rows);
   const html = `
     <div style="font-family:Cairo,Arial,sans-serif;line-height:1.95;color:#1f2937;text-align:right;direction:rtl;">
       <p style="margin:0 0 8px 0;">${escapeHtml(recipient)} سلمه الله</p>
       <p style="margin:0 0 16px 0;">السلام عليكم ورحمة الله وبركاته،</p>
       <p style="margin:0 0 12px 0;">${escapeHtml(introText)}</p>
-      ${detailsBlock}
-      ${buildLeadershipTableHtml(params.template.columns, rows)}
-      <p style="margin:14px 0 0 0;">وتفضلوا بقبول خالص التحية والتقدير.</p>
+      ${params.template.key === 'eid_duty' ? `<p style="margin:0 0 12px 0;">وذلك للعمل خلال الإجازة للقيام بالمهام التالية:</p>${htmlBody}` : htmlBody}
+      ${details && params.template.key === 'eid_duty' ? `<p style="margin:12px 0 0 0;">${escapeHtml(details)}</p>` : ''}
+      <p style="margin:14px 0 0 0;white-space:pre-line;">${escapeHtml(closingText)}</p>
     </div>
   `.trim();
 
@@ -1734,19 +1801,19 @@ function generateLeadershipDraft(params: {
     'السلام عليكم ورحمة الله وبركاته،',
     '',
     introText,
-    details ? `
+    '',
+    params.template.key === 'eid_duty' ? `وذلك للعمل خلال الإجازة للقيام بالمهام التالية:
+${textBody}` : textBody,
+    details && params.template.key === 'eid_duty' ? `
 ${details}` : '',
     '',
-    buildLeadershipTableText(params.template.columns, rows),
+    'آمل التكرم بالاطلاع والتوجيه بما ترونه مناسبًا.',
     '',
     'وتفضلوا بقبول خالص التحية والتقدير.',
-  ].filter(Boolean).join('\n');
+].filter(Boolean).join('\n');
 
-  return {
-    subject: params.template.subject,
-    plainText,
-    html,
-  };
+
+  return { subject, plainText, html };
 }
 
 export default function HomePage() {
@@ -1771,7 +1838,7 @@ export default function HomePage() {
   const [generalDraft, setGeneralDraft] = useState<{ subject: string; plainText: string; html: string } | null>(null);
   const [leadershipTemplate, setLeadershipTemplate] = useState<LeadershipTemplateKey>('nomination_change');
   const [leadershipInputMode, setLeadershipInputMode] = useState<InputMode>('manual');
-  const [leadershipRecipient, setLeadershipRecipient] = useState('سعادة وكيل الجامعة للتدريب');
+  const [leadershipRecipient] = useState('سعادة وكيل الجامعة للتدريب');
   const [leadershipIntro, setLeadershipIntro] = useState('');
   const [leadershipDetails, setLeadershipDetails] = useState('');
   const [leadershipRows, setLeadershipRows] = useState<LeadershipRow[]>(() => [createLeadershipRow(getLeadershipTemplateConfig('nomination_change').columns.length)]);
@@ -2131,7 +2198,7 @@ ${draft.plainText}`;
     const draft = leadershipDraft || buildLeadershipDraft();
     if (!draft) return;
     try {
-      const eml = await buildOutlookDraftEml('', '', draft.subject, draft.html, []);
+      const eml = await buildOutlookDraftEml(LEADERSHIP_TO_EMAIL, LEADERSHIP_CC_EMAIL, draft.subject, draft.html, []);
       const blob = new Blob([eml], { type: 'message/rfc822;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
@@ -2900,7 +2967,7 @@ ${draft.plainText}`;
         <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="block">
             <div className="mb-2 text-sm font-semibold text-[#016564]">المرسل إليه</div>
-            <input value={leadershipRecipient} onChange={(e) => setLeadershipRecipient(e.target.value)} className="w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]" placeholder="مثال: سعادة وكيل الجامعة للتدريب" />
+            <div className="rounded-2xl border border-[#d6d7d4] bg-[#f8f9f9] px-4 py-3 text-sm text-[#2b3a3a]">{leadershipRecipient}</div><div className="mt-2 text-xs leading-6 text-[#8c6968]">إلى: {LEADERSHIP_TO_EMAIL}<br />نسخة: {LEADERSHIP_CC_EMAIL}</div>
           </label>
           <label className="block">
             <div className="mb-2 text-sm font-semibold text-[#016564]">الموضوع</div>
@@ -2965,12 +3032,21 @@ ${draft.plainText}`;
                 <tr key={row.id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-[#f8f9f9]'}>
                   {selectedLeadershipTemplate.columns.map((column, columnIndex) => (
                     <td key={`${row.id}-${columnIndex}`} className="border border-[#e1e5e5] p-2 align-top">
-                      <input
-                        value={row.values[columnIndex] || ''}
-                        onChange={(e) => updateLeadershipCell(row.id, columnIndex, e.target.value)}
-                        className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2 outline-none transition focus:border-[#016564]"
-                        placeholder={column}
-                      />
+                      {column.includes('تاريخ') ? (
+                        <input
+                          type="date"
+                          value={row.values[columnIndex] || ''}
+                          onChange={(e) => updateLeadershipCell(row.id, columnIndex, e.target.value)}
+                          className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2 outline-none transition focus:border-[#016564]"
+                        />
+                      ) : (
+                        <input
+                          value={row.values[columnIndex] || ''}
+                          onChange={(e) => updateLeadershipCell(row.id, columnIndex, e.target.value)}
+                          className="w-full rounded-xl border border-[#d6d7d4] px-3 py-2 outline-none transition focus:border-[#016564]"
+                          placeholder={column}
+                        />
+                      )}
                     </td>
                   ))}
                   <td className="border border-[#e1e5e5] p-2 text-center">
@@ -3001,7 +3077,7 @@ ${draft.plainText}`;
         {leadershipDraft ? (
           <div>
             <div className="mb-3 rounded-2xl bg-[#f7fbfb] px-4 py-3 text-sm font-semibold text-[#016564]">الموضوع: {leadershipDraft.subject}</div>
-            <div className="mb-4 whitespace-pre-wrap text-sm leading-8 text-[#2b3a3a]">{leadershipDraft.plainText}</div>
+            <div className="mb-4 rounded-2xl border border-[#e5e7eb] bg-white p-4 text-sm leading-8 text-[#2b3a3a]" dangerouslySetInnerHTML={{ __html: leadershipDraft.html }} />
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-[#d6d7d4] p-4 text-sm leading-7 text-[#8c6968]">اختر نوع المراسلة، ثم أدخل البيانات أو استورد الجدول، وبعدها اضغط صياغة الرسالة.</div>
