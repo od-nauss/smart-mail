@@ -1838,7 +1838,7 @@ export default function HomePage() {
   const [generalDraft, setGeneralDraft] = useState<{ subject: string; plainText: string; html: string } | null>(null);
   const [leadershipTemplate, setLeadershipTemplate] = useState<LeadershipTemplateKey>('nomination_change');
   const [leadershipInputMode, setLeadershipInputMode] = useState<InputMode>('manual');
-  const [leadershipRecipient] = useState('سعادة وكيل الجامعة للتدريب');
+  const [leadershipRecipient, setLeadershipRecipient] = useState('سعادة وكيل الجامعة للتدريب');
   const [leadershipIntro, setLeadershipIntro] = useState('');
   const [leadershipDetails, setLeadershipDetails] = useState('');
   const [leadershipRows, setLeadershipRows] = useState<LeadershipRow[]>(() => [createLeadershipRow(getLeadershipTemplateConfig('nomination_change').columns.length)]);
