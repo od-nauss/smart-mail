@@ -1497,14 +1497,7 @@ export default function HomePage() {
   }, [courses]);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(ARCHIVE_KEY);
-      if (saved) {
-        setArchiveRecords(JSON.parse(saved));
-      }
-    } catch {
-      setArchiveRecords([]);
-    }
+    void refreshSharedArchive(true);
   }, []);
 
   useEffect(() => {
@@ -1547,9 +1540,20 @@ export default function HomePage() {
     } catch {}
   }, [weeklyView, selectedDepartment, inputMode, cc, startDate, courses, fileName, pastedText, importSummary]);
 
-  function persistArchive(records: ArchiveRecord[]) {
-    setArchiveRecords(records);
-    localStorage.setItem(ARCHIVE_KEY, JSON.stringify(records));
+  async function refreshSharedArchive(silent = false) {
+    try {
+      const response = await fetch('/api/shared-message-drafts', { cache: 'no-store' });
+      const data = await response.json().catch(() => ({ records: [] }));
+      if (!response.ok) {
+        if (!silent) setSystemNotice(data.error || 'تعذر تحميل آخر معاملتين مشتركتين.');
+        setArchiveRecords([]);
+        return;
+      }
+      setArchiveRecords(Array.isArray(data.records) ? data.records : []);
+    } catch {
+      if (!silent) setSystemNotice('تعذر تحميل آخر معاملتين مشتركتين.');
+      setArchiveRecords([]);
+    }
   }
 
   function resetWeeklyForm() {
@@ -2008,7 +2012,7 @@ export default function HomePage() {
     }
   }
 
-  function saveToArchive() {
+  async function saveToArchive() {
     if (!selectedDepartment || !previewHtml) {
       setSystemNotice('أكمل البيانات أولًا ثم احفظ النسخة.');
       return;
@@ -2055,9 +2059,22 @@ export default function HomePage() {
       snapshot,
     };
 
-    const next = [record, ...archiveRecords].slice(0, 25);
-    persistArchive(next);
-    setSystemNotice('تم حفظ الرسالة في الأرشيف.');
+    try {
+      const response = await fetch('/api/shared-message-drafts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record }),
+      });
+      const data = await response.json().catch(() => ({ records: [] }));
+      if (!response.ok) {
+        setSystemNotice(data.error || 'تعذر حفظ آخر معاملتين مشتركتين.');
+        return;
+      }
+      setArchiveRecords(Array.isArray(data.records) ? data.records : []);
+      setSystemNotice('تم حفظ المعاملة ضمن آخر معاملتين مشتركتين.');
+    } catch {
+      setSystemNotice('تعذر حفظ آخر معاملتين مشتركتين.');
+    }
   }
 
   function loadFromArchive(record: ArchiveRecord) {
@@ -2097,9 +2114,21 @@ export default function HomePage() {
     setSystemNotice(`تم استدعاء نسخة ${record.label}.`);
   }
 
-  function deleteArchiveRecord(id: string) {
-    persistArchive(archiveRecords.filter((record) => record.id !== id));
-    setSystemNotice('تم حذف النسخة من الأرشيف.');
+  async function deleteArchiveRecord(id: string) {
+    try {
+      const response = await fetch(`/api/shared-message-drafts?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json().catch(() => ({ records: [] }));
+      if (!response.ok) {
+        setSystemNotice(data.error || 'تعذر حذف المعاملة.');
+        return;
+      }
+      setArchiveRecords(Array.isArray(data.records) ? data.records : []);
+      setSystemNotice('تم حذف المعاملة.');
+    } catch {
+      setSystemNotice('تعذر حذف المعاملة.');
+    }
   }
 
   async function exportAsJpg() {
