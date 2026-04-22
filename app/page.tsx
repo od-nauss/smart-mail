@@ -8,8 +8,9 @@ import { Footer } from '@/components/layout/Footer';
 
 type HomeModuleKey = 'weekly' | 'operational' | 'leadership' | 'general';
 type DepartmentKey = 'hospitality' | 'security' | 'medical' | 'support';
-type WeeklyView = 'home' | 'form';
+type WeeklyView = 'home' | 'form' | 'general';
 type InputMode = 'excel' | 'manual' | 'paste';
+type GeneralStyleKey = 'executive' | 'concise' | 'persuasive' | 'engaging';
 type HospitalityItemKey =
   | 'breakfast'
   | 'saudiCoffee'
@@ -1429,6 +1430,127 @@ function readFileAsBase64(file: File) {
   });
 }
 
+
+
+const generalStyleOptions: Array<{ key: GeneralStyleKey; label: string; description: string }> = [
+  { key: 'executive', label: 'رسمي تنفيذي', description: 'رسمي واضح مناسب للقيادات والمخاطبات المؤسسية.' },
+  { key: 'concise', label: 'مباشر مختصر', description: 'مختصر ودقيق ويركز على الطلب مباشرة.' },
+  { key: 'persuasive', label: 'إقناعي موسع', description: 'أوضح في التبرير وأكثر إقناعًا.' },
+  { key: 'engaging', label: 'تفاعلي راقٍ', description: 'راقي وحيوي مع بقاء الرسمية.' },
+];
+
+function resolveRecipientTitle(recipient: string) {
+  const raw = String(recipient || '').trim();
+  if (!raw) return 'سعادة المسؤول المختص حفظه الله';
+  if (/^سعادة|^معالي|^فضيلة|^الدكتور|^الأستاذ/i.test(raw)) return raw;
+  if (/وكيل التدريب|وكيل الجامعة للتدريب/i.test(raw)) return 'سعادة وكيل الجامعة للتدريب حفظه الله';
+  if (/مدير/i.test(raw)) return `سعادة ${raw} سلمه الله`;
+  return `سعادة ${raw} حفظه الله`;
+}
+
+function sentenceFromRequest(value: string) {
+  const raw = String(value || '').trim();
+  if (!raw) return 'التكرم بالنظر في الطلب المشار إليه واتخاذ ما يلزم بشأنه.';
+  if (/الموافقة|اعتماد|التوجيه|التكرم|الاطلاع|التعميد/i.test(raw)) return raw;
+  return `التكرم بـ${raw}`;
+}
+
+function generateGeneralEmail(params: {
+  recipient: string;
+  subject: string;
+  request: string;
+  details: string;
+  style: GeneralStyleKey;
+  variant: number;
+}) {
+  const recipientTitle = resolveRecipientTitle(params.recipient);
+  const subject = String(params.subject || '').trim();
+  const request = sentenceFromRequest(params.request);
+  const details = String(params.details || '').trim();
+  const variant = Math.abs(Number(params.variant || 0));
+
+  const introPool = [
+    `إشارة إلى موضوع ${subject}، نفيد سعادتكم بالحاجة إلى ${subject}، وذلك في إطار دعم الجاهزية التشغيلية وتعزيز كفاءة العمل وفق المتطلبات المعتمدة.`,
+    `نفيد سعادتكم بأن الحاجة قائمة إلى ${subject}، لما لذلك من أثر مباشر في رفع كفاءة التشغيل والمحافظة على استقرار البيئة العملية وجودة الأداء.`,
+    `نحيط سعادتكم علمًا بوجود حاجة تشغيلية تتعلق بـ${subject}، بما يسهم في دعم الجاهزية وتحسين موثوقية العمل وتقليل المخاطر المحتملة.`,
+  ];
+
+  const justificationPool = [
+    `ويأتي هذا الطلب نظرًا لما يمثله الإجراء المقترح من أهمية في تعزيز السلامة التقنية والحد من الأعطال والمخاطر التشغيلية المحتملة.`,
+    `ويستند هذا الطلب إلى حاجة عملية قائمة من شأنها دعم كفاءة الاستخدام والمحافظة على استمرارية العمل بالمستوى المطلوب.`,
+    `ومن شأن اعتماد هذا الإجراء أن يسهم في رفع موثوقية البيئة التشغيلية وتحسين مستوى الجاهزية وتقليل فرص التعثر أو المخاطر المرتبطة بالتشغيل.`,
+  ];
+
+  const closingPool = [
+    `وعليه، نأمل من سعادتكم ${request}.`,
+    `لذا نأمل من سعادتكم ${request}.`,
+    `وبناءً على ما تقدم، نأمل من سعادتكم ${request}.`,
+  ];
+
+  const intro = introPool[variant % introPool.length];
+  const justification = justificationPool[variant % justificationPool.length];
+  const closing = closingPool[variant % closingPool.length];
+  const extra = details ? `كما نود الإحاطة بأن ${details}.
+` : '';
+
+  let body = '';
+
+  if (params.style === 'concise') {
+    body = `${recipientTitle}
+
+السلام عليكم ورحمة الله وبركاته،
+
+نفيد سعادتكم بالحاجة إلى ${subject}.
+${details ? `${details}.
+` : ''}
+وعليه، نأمل من سعادتكم ${request}.
+
+وتفضلوا بقبول خالص التحية والتقدير.`;
+  } else if (params.style === 'persuasive') {
+    body = `${recipientTitle}
+
+السلام عليكم ورحمة الله وبركاته،
+
+${intro}
+
+${justification}
+${extra}
+${closing}
+
+وتفضلوا بقبول خالص التحية والتقدير.`;
+  } else if (params.style === 'engaging') {
+    body = `${recipientTitle}
+
+السلام عليكم ورحمة الله وبركاته،
+
+يسرنا رفع هذا الطلب إلى سعادتكم بشأن ${subject}، انطلاقًا من الحرص على رفع جودة العمل وتعزيز الجاهزية وتحسين مستوى الأداء في البيئة المستهدفة.
+
+${details ? `ويأتي ذلك في ضوء ما يلي: ${details}.
+
+` : ''}${closing}
+
+شاكرين لسعادتكم كريم دعمكم وتعاونكم الدائم، وتفضلوا بقبول خالص التحية والتقدير.`;
+  } else {
+    body = `${recipientTitle}
+
+السلام عليكم ورحمة الله وبركاته،
+
+${intro}
+
+${details ? `${details}.
+
+` : ''}${closing}
+
+وتفضلوا بقبول خالص التحية والتقدير.`;
+  }
+
+  return {
+    subject,
+    plainText: body.trim(),
+    html: nl2br(body.trim()),
+  };
+}
+
 export default function HomePage() {
   const [weeklyView, setWeeklyView] = useState<WeeklyView>('home');
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentKey | null>(null);
@@ -1441,6 +1563,13 @@ export default function HomePage() {
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [fileName, setFileName] = useState('');
   const [pastedText, setPastedText] = useState('');
+  const [generalRecipient, setGeneralRecipient] = useState('');
+  const [generalSubject, setGeneralSubject] = useState('');
+  const [generalRequest, setGeneralRequest] = useState('');
+  const [generalDetails, setGeneralDetails] = useState('');
+  const [generalStyle, setGeneralStyle] = useState<GeneralStyleKey>('executive');
+  const [generalVariant, setGeneralVariant] = useState(0);
+  const [generalDraft, setGeneralDraft] = useState<{ subject: string; plainText: string; html: string } | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const [courseForm, setCourseForm] = useState<CourseRecord>({
@@ -1598,6 +1727,89 @@ export default function HomePage() {
     setFileInputKey((prev) => prev + 1);
   }
 
+
+
+  function resetGeneralForm() {
+    setGeneralRecipient('');
+    setGeneralSubject('');
+    setGeneralRequest('');
+    setGeneralDetails('');
+    setGeneralStyle('executive');
+    setGeneralVariant(0);
+    setGeneralDraft(null);
+  }
+
+  function buildGeneralDraft(nextVariant?: number) {
+    if (!generalRecipient.trim() || !generalSubject.trim() || !generalRequest.trim()) {
+      setSystemNotice('أكمل حقول المرسل إليه والموضوع والمطلوب أولًا.');
+      return null;
+    }
+
+    const variantValue = typeof nextVariant === 'number' ? nextVariant : generalVariant;
+    const draft = generateGeneralEmail({
+      recipient: generalRecipient,
+      subject: generalSubject,
+      request: generalRequest,
+      details: generalDetails,
+      style: generalStyle,
+      variant: variantValue,
+    });
+    setGeneralDraft(draft);
+    return draft;
+  }
+
+  function regenerateGeneralDraft() {
+    if (!generalRecipient.trim() || !generalSubject.trim() || !generalRequest.trim()) {
+      setSystemNotice('أكمل حقول المرسل إليه والموضوع والمطلوب أولًا.');
+      return;
+    }
+    const nextVariant = generalVariant + 1;
+    setGeneralVariant(nextVariant);
+    const draft = generateGeneralEmail({
+      recipient: generalRecipient,
+      subject: generalSubject,
+      request: generalRequest,
+      details: generalDetails,
+      style: generalStyle,
+      variant: nextVariant,
+    });
+    setGeneralDraft(draft);
+    setSystemNotice('تم إنشاء صياغة بديلة.');
+  }
+
+  async function copyGeneralText() {
+    const draft = generalDraft || buildGeneralDraft();
+    if (!draft) return;
+    const textToCopy = `الموضوع: ${draft.subject}
+
+${draft.plainText}`;
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setSystemNotice('تم نسخ نص البريد.');
+    } catch {
+      setSystemNotice('تعذر نسخ النص حاليًا.');
+    }
+  }
+
+  async function downloadGeneralEml() {
+    const draft = generalDraft || buildGeneralDraft();
+    if (!draft) return;
+    try {
+      const eml = await buildOutlookDraftEml(generalRecipient.trim(), '', draft.subject, draft.html, []);
+      const blob = new Blob([eml], { type: 'message/rfc822;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${sanitizeFilename(draft.subject || 'general-message')}.eml`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setSystemNotice('تم تنزيل مسودة البريد بصيغة EML.');
+    } catch {
+      setSystemNotice('تعذر تنزيل مسودة البريد حاليًا.');
+    }
+  }
   function resetCourseForm() {
     setCourseForm({
       title: '',
@@ -2248,6 +2460,27 @@ export default function HomePage() {
                           </div>
                         </button>
                       </div>
+                    ) : module.key === 'general' ? (
+                      <div className="rounded-2xl border border-[#e7dcc7] bg-[#fbfaf7] p-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setWeeklyView('general')}
+                          className="group flex w-full items-center justify-between rounded-2xl border border-[#d0b284] bg-white px-4 py-4 text-right transition hover:border-[#016564] hover:shadow-sm"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#8c6968]/10 text-xl">✉️</div>
+                            <div>
+                              <div className="text-sm font-semibold text-[#016564]">المراسلات العامة الذكية</div>
+                              <div className="mt-0.5 text-xs text-[#8c6968]">صياغة بريد احترافي من 3 حقول فقط مع EML ونسخ مباشر</div>
+                            </div>
+                          </div>
+                          <div className="text-[#d0b284] transition group-hover:translate-x-[-4px]">
+                            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                              <path d="M9 6l6 6-6 6" />
+                            </svg>
+                          </div>
+                        </button>
+                      </div>
                     ) : (
                       <div className="rounded-2xl border border-dashed border-[#d6d7d4] bg-[#fcfdfd] px-4 py-4 text-right">
                         <div className="text-sm font-semibold text-[#8c6968]">قريبًا</div>
@@ -2258,6 +2491,101 @@ export default function HomePage() {
               </section>
             </>
           )}
+
+
+{weeklyView === 'general' && (
+  <>
+    <div className="mb-5 flex items-center justify-between">
+      <div>
+        <h2 className="text-2xl font-semibold text-[#016564]">المراسلات العامة الذكية</h2>
+        <p className="mt-1 text-sm text-[#8c6968]">صياغة بريد عربي رسمي احترافي مع خيارات متعددة ونسخ وملف EML</p>
+      </div>
+      <button type="button" onClick={() => { resetGeneralForm(); setWeeklyView('home'); }} className="rounded-xl border border-[#d6d7d4] bg-white px-4 py-2 text-sm font-semibold text-[#016564]">
+        العودة للرئيسية
+      </button>
+    </div>
+
+    <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="rounded-[28px] border border-[#e2e7e7] bg-white p-5 shadow-sm">
+        <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <label className="block">
+            <div className="mb-2 text-sm font-semibold text-[#016564]">مرسل إلى</div>
+            <input value={generalRecipient} onChange={(e) => setGeneralRecipient(e.target.value)} className="w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]" placeholder="مثال: وكيل التدريب" />
+          </label>
+          <label className="block">
+            <div className="mb-2 text-sm font-semibold text-[#016564]">الموضوع</div>
+            <input value={generalSubject} onChange={(e) => setGeneralSubject(e.target.value)} className="w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]" placeholder="مثال: تركيب برامج انتي فايروس في أجهزة معمل 5" />
+          </label>
+        </div>
+
+        <label className="mb-4 block">
+          <div className="mb-2 text-sm font-semibold text-[#016564]">المطلوب</div>
+          <input value={generalRequest} onChange={(e) => setGeneralRequest(e.target.value)} className="w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]" placeholder="مثال: الموافقة على تركيب البرنامج" />
+        </label>
+
+        <label className="mb-5 block">
+          <div className="mb-2 text-sm font-semibold text-[#016564]">تفاصيل إضافية اختيارية</div>
+          <textarea value={generalDetails} onChange={(e) => setGeneralDetails(e.target.value)} rows={5} className="w-full rounded-2xl border border-[#d6d7d4] px-4 py-3 text-sm outline-none transition focus:border-[#016564]" placeholder="أي تفاصيل مساندة أو تبرير إضافي عند الحاجة" />
+        </label>
+
+        <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {generalStyleOptions.map((style) => {
+            const active = generalStyle === style.key;
+            return (
+              <button
+                key={style.key}
+                type="button"
+                onClick={() => setGeneralStyle(style.key)}
+                className={`rounded-2xl border p-4 text-right transition ${active ? 'border-[#016564] bg-[#f7fbfb] shadow-sm' : 'border-[#e1e5e5] bg-white hover:border-[#d0b284]'}`}
+              >
+                <div className="text-sm font-semibold text-[#016564]">{style.label}</div>
+                <div className="mt-1 text-xs leading-6 text-[#8c6968]">{style.description}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button type="button" onClick={() => buildGeneralDraft()} className="rounded-2xl bg-[#016564] px-5 py-3 text-sm font-semibold text-white">
+            صياغة الرسالة
+          </button>
+          <button type="button" onClick={regenerateGeneralDraft} className="rounded-2xl border border-[#d0b284] bg-white px-5 py-3 text-sm font-semibold text-[#016564]">
+            صياغة أخرى
+          </button>
+          <button type="button" onClick={copyGeneralText} className="rounded-2xl border border-[#d6d7d4] bg-white px-5 py-3 text-sm font-semibold text-[#016564]">
+            نسخ النص
+          </button>
+          <button type="button" onClick={downloadGeneralEml} className="rounded-2xl border border-[#d6d7d4] bg-white px-5 py-3 text-sm font-semibold text-[#016564]">
+            تنزيل EML
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-[28px] border border-[#e2e7e7] bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-[#016564]">المعاينة</h3>
+            <p className="mt-1 text-xs text-[#8c6968]">ستظهر هنا الصياغة الجاهزة للبريد</p>
+          </div>
+          <div className="rounded-2xl bg-[#f7f9f9] px-3 py-2 text-xs font-semibold text-[#8c6968]">
+            {generalStyleOptions.find((item) => item.key === generalStyle)?.label}
+          </div>
+        </div>
+
+        {generalDraft ? (
+          <div className="rounded-2xl border border-[#eceeee] bg-[#fcfdfd] p-4">
+            <div className="mb-3 rounded-2xl bg-[#f7fbfb] px-4 py-3 text-sm font-semibold text-[#016564]">الموضوع: {generalDraft.subject}</div>
+            <div className="whitespace-pre-wrap text-sm leading-8 text-[#2b3a3a]">{generalDraft.plainText}</div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-[#d6d7d4] bg-[#fcfdfd] px-4 py-10 text-center text-sm text-[#8c6968]">
+            أدخل بيانات الرسالة ثم اضغط صياغة الرسالة
+          </div>
+        )}
+      </div>
+    </section>
+  </>
+)}
 
           {weeklyView === 'form' && (
             <>
