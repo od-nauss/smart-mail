@@ -1,15 +1,28 @@
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Pool } from 'pg';
 
 const TABLE = 'shared_message_drafts';
+let pool: Pool | null = null;
 
-function getConfig() {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceRoleKey) {
-    return null;
+function getDatabaseUrl() {
+  return process.env.DATABASE_URL || null;
+}
+
+function getPool() {
+  const connectionString = getDatabaseUrl();
+  if (!connectionString) {
+    throw new Error('MISSING_DATABASE_URL');
   }
-  return { url, serviceRoleKey };
+
+  if (!pool) {
+    pool = new Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
+
+  return pool;
 }
 
 type SharedRecordRow = {
@@ -40,51 +53,26 @@ function mapRow(row: SharedRecordRow) {
   };
 }
 
-async function supabaseRequest(path: string, init?: RequestInit) {
-  const config = getConfig();
-  if (!config) {
-    throw new Error('MISSING_SUPABASE_CONFIG');
-  }
-
-  const response = await fetch(`${config.url}/rest/v1${path}`, {
-    ...init,
-    headers: {
-      apikey: config.serviceRoleKey,
-      Authorization: `Bearer ${config.serviceRoleKey}`,
-      'Content-Type': 'application/json',
-      ...(init?.headers || {}),
-    },
-    cache: 'no-store',
-  });
-
-  return response;
-}
-
 async function getLatestTwo() {
-  const response = await supabaseRequest(`/${TABLE}?select=id,department,subject,html,plain_text,created_at,week_label,start_date,label,snapshot&order=created_at.desc&limit=2`);
-  if (!response.ok) {
-    throw new Error('LOAD_FAILED');
-  }
-  const rows = (await response.json()) as SharedRecordRow[];
-  return rows.map(mapRow);
+  const db = getPool();
+  const result = await db.query<SharedRecordRow>(
+    `select id, department, subject, html, plain_text, created_at, week_label, start_date, label, snapshot
+     from ${TABLE}
+     order by created_at desc
+     limit 2`
+  );
+  return result.rows.map(mapRow);
 }
 
 async function cleanupToLastTwo() {
-  const response = await supabaseRequest(`/${TABLE}?select=id&order=created_at.desc`);
-  if (!response.ok) {
-    throw new Error('CLEANUP_LIST_FAILED');
-  }
-  const rows = (await response.json()) as Array<{ id: string }>;
-  const extraIds = rows.slice(2).map((item) => item.id).filter(Boolean);
-  if (!extraIds.length) return;
+  const db = getPool();
+  const result = await db.query<{ id: string }>(
+    `select id from ${TABLE} order by created_at desc offset 2`
+  );
+  if (!result.rows.length) return;
 
-  const filter = extraIds.map((id) => `"${id.replaceAll('"', '')}"`).join(',');
-  const deleteResponse = await supabaseRequest(`/${TABLE}?id=in.(${filter})`, {
-    method: 'DELETE',
-  });
-  if (!deleteResponse.ok) {
-    throw new Error('CLEANUP_DELETE_FAILED');
-  }
+  const ids = result.rows.map((row) => row.id);
+  await db.query(`delete from ${TABLE} where id = any($1::text[])`, [ids]);
 }
 
 export async function GET() {
@@ -92,8 +80,8 @@ export async function GET() {
     const records = await getLatestTwo();
     return NextResponse.json({ records });
   } catch (error) {
-    const message = error instanceof Error && error.message === 'MISSING_SUPABASE_CONFIG'
-      ? 'مطلوب ربط Supabase أولًا لتفعيل آخر معاملتين مشتركتين.'
+    const message = error instanceof Error && error.message === 'MISSING_DATABASE_URL'
+      ? 'مطلوب ضبط DATABASE_URL أولًا لتفعيل آخر معاملتين مشتركتين.'
       : 'تعذر تحميل آخر معاملتين مشتركتين.';
     return NextResponse.json({ error: message, records: [] }, { status: 500 });
   }
@@ -107,37 +95,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'بيانات المعاملة غير مكتملة.' }, { status: 400 });
     }
 
-    const payload = {
-      id: String(record.id),
-      department: String(record.department),
-      subject: String(record.subject),
-      html: String(record.html),
-      plain_text: String(record.plainText || ''),
-      created_at: String(record.createdAt || new Date().toISOString()),
-      week_label: String(record.weekLabel || ''),
-      start_date: String(record.startDate || ''),
-      label: String(record.label || ''),
-      snapshot: record.snapshot ?? null,
-    };
-
-    const saveResponse = await supabaseRequest(`/${TABLE}`, {
-      method: 'POST',
-      headers: {
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!saveResponse.ok) {
-      return NextResponse.json({ error: 'تعذر حفظ المعاملة المشتركة.' }, { status: 500 });
-    }
+    const db = getPool();
+    await db.query(
+      `insert into ${TABLE} (
+        id, department, subject, html, plain_text, created_at, week_label, start_date, label, snapshot
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [
+        String(record.id),
+        String(record.department),
+        String(record.subject),
+        String(record.html),
+        String(record.plainText || ''),
+        String(record.createdAt || new Date().toISOString()),
+        String(record.weekLabel || ''),
+        String(record.startDate || ''),
+        String(record.label || ''),
+        JSON.stringify(record.snapshot ?? null),
+      ]
+    );
 
     await cleanupToLastTwo();
     const records = await getLatestTwo();
     return NextResponse.json({ records });
   } catch (error) {
-    const message = error instanceof Error && error.message === 'MISSING_SUPABASE_CONFIG'
-      ? 'مطلوب ربط Supabase أولًا لتفعيل آخر معاملتين مشتركتين.'
+    const message = error instanceof Error && error.message === 'MISSING_DATABASE_URL'
+      ? 'مطلوب ضبط DATABASE_URL أولًا لتفعيل آخر معاملتين مشتركتين.'
       : 'تعذر حفظ المعاملة المشتركة.';
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -150,19 +132,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'معرف المعاملة مفقود.' }, { status: 400 });
     }
 
-    const deleteResponse = await supabaseRequest(`/${TABLE}?id=eq.${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
-
-    if (!deleteResponse.ok) {
-      return NextResponse.json({ error: 'تعذر حذف المعاملة.' }, { status: 500 });
-    }
-
+    const db = getPool();
+    await db.query(`delete from ${TABLE} where id = $1`, [id]);
     const records = await getLatestTwo();
     return NextResponse.json({ records });
   } catch (error) {
-    const message = error instanceof Error && error.message === 'MISSING_SUPABASE_CONFIG'
-      ? 'مطلوب ربط Supabase أولًا لتفعيل آخر معاملتين مشتركتين.'
+    const message = error instanceof Error && error.message === 'MISSING_DATABASE_URL'
+      ? 'مطلوب ضبط DATABASE_URL أولًا لتفعيل آخر معاملتين مشتركتين.'
       : 'تعذر حذف المعاملة.';
     return NextResponse.json({ error: message }, { status: 500 });
   }
