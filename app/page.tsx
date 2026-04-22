@@ -92,6 +92,7 @@ type ArchiveRecord = {
 };
 
 const ARCHIVE_KEY = 'smart-mail-weekly-archive-v2';
+const WEEKLY_DRAFT_KEY = 'smart-mail-weekly-draft-v1';
 const ARCHIVE_PASSWORD = 'Nn@123123';
 
 const homeModules: Array<{
